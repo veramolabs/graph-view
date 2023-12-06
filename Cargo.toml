@@ -7,4 +7,8 @@ edition = "2021"
 
 [dependencies]
 bevy="0.12"
+bevy-inspector-egui="0.21"
+bevy_window="0.12"
 bevy_egui="0.23"
+rand="*"
+bevy_panorbit_camera = "0.9"

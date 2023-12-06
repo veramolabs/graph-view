@@ -1,3 +1,4 @@
+use crate::assets::MyAssets;
 use crate::identifiers::Identifier;
 use crate::resources::Configuration;
 use bevy::prelude::*;
@@ -19,7 +20,7 @@ fn update_identifiers(
     mut commands: Commands,
     configuration: Res<Configuration>,
     query: Query<Entity, &Identifier>,
-    mut meshes: ResMut<Assets<Mesh>>,
+    my_assets: ResMut<MyAssets>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     if !configuration.is_changed() {
@@ -32,14 +33,19 @@ fn update_identifiers(
     if target_count > current_count {
         // Spawn additional cubes
         for _ in 0..(target_count - current_count) {
-            let x = rng.gen_range(0.0..configuration.x);
-            let y = rng.gen_range(0.0..configuration.y);
-            let z = rng.gen_range(0.0..configuration.z);
+            let x = rng.gen_range(-configuration.container_size..configuration.container_size);
+            let y = rng.gen_range(-configuration.container_size..configuration.container_size);
+            let z = rng.gen_range(-configuration.container_size..configuration.container_size);
             commands.spawn((
-                PbrBundle {
+                MaterialMeshBundle {
                     // ... Mesh, Material, Transform
-                    mesh: meshes.add(Mesh::from(shape::Cube { size: 0.1 })),
-                    material: materials.add(Color::rgb(0.18, 0.7, 0.6).into()),
+                    mesh: my_assets.mesh_handle.clone(),
+                    material: materials.add(StandardMaterial {
+                        base_color: Color::ORANGE,
+                        ..default()
+                    }),
+                    // material: my_assets.material_handle.clone(),
+                    // material: my_assets.color_material_handle.clone(),
                     transform: Transform::from_xyz(x, y, z),
 
                     ..Default::default()

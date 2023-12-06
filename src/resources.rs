@@ -1,16 +1,20 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::prelude::*;
 
-#[derive(Reflect, Resource, Default, InspectorOptions)]
+#[derive(Reflect, Resource, InspectorOptions)]
 #[reflect(Resource, InspectorOptions)]
 pub struct Configuration {
-    #[inspector(min = 0, max = 1000)]
+    #[inspector(min = 0, max = 10000)]
     pub identifiers: u32,
     #[inspector(min = 1.0, max = 1000.0)]
-    pub x: f32,
-    #[inspector(min = 1.0, max = 1000.0)]
-    pub y: f32,
-    #[inspector(min = 1.0, max = 1000.0)]
-    pub z: f32,
+    pub container_size: f32,
 }
 
+impl Default for Configuration {
+    fn default() -> Self {
+        Self {
+            identifiers: 1000,
+            container_size: 10.0,
+        }
+    }
+}

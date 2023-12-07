@@ -1,6 +1,7 @@
 use crate::assets::MyAssets;
 use crate::identifiers::Identifier;
 use crate::resources::Configuration;
+use bevy::input::common_conditions::input_toggle_active;
 use bevy::prelude::*;
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::egui;
@@ -11,8 +12,11 @@ pub struct SimulationPlugin;
 
 impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, inspector_ui)
-            .add_systems(Update, update_identifiers);
+        app.add_systems(
+            Update,
+            inspector_ui.run_if(input_toggle_active(true, KeyCode::C)),
+        )
+        .add_systems(Update, update_identifiers);
     }
 }
 
@@ -61,26 +65,19 @@ fn update_identifiers(
     }
 }
 
-fn inspector_ui(world: &mut World, mut disabled: Local<bool>) {
-    let space_pressed = world
-        .resource::<Input<KeyCode>>()
-        .just_pressed(KeyCode::Space);
-    if space_pressed {
-        *disabled = !*disabled;
-    }
-    if *disabled {
-        return;
-    }
-
-    let mut egui_context = world
-        .query_filtered::<&mut EguiContext, With<PrimaryWindow>>()
-        .single(world)
-        .clone();
+fn inspector_ui(
+    mut configuration: ResMut<Configuration>,
+    query: Query<&mut EguiContext, With<PrimaryWindow>>,
+) {
+    let mut egui_context = query.single().clone();
 
     egui::Window::new("Configuration").show(egui_context.get_mut(), |ui| {
         egui::ScrollArea::vertical().show(ui, |ui| {
-            bevy_inspector_egui::bevy_inspector::ui_for_resource::<Configuration>(world, ui);
-
+            // bevy_inspector_egui::bevy_inspector::ui_for_resource::<Configuration>(world, ui);
+            ui.add(
+                egui::Slider::new(&mut configuration.identifiers, 0..=10000).text("Identifiers"),
+            );
+            ui.add(egui::Slider::new(&mut configuration.container_size, 0.0..=100.0).text("Space"));
             ui.separator();
             ui.label("Press space to toggle");
         });

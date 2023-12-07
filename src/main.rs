@@ -8,11 +8,16 @@ use bevy_panorbit_camera::*;
 use bevy_window::PresentMode;
 mod assets;
 mod identifiers;
+mod keyboard;
 mod resources;
 mod simulation;
+mod touch;
+
 use assets::AssetsPlugin;
+use keyboard::KeyboardPlugin;
 use resources::Configuration;
 use simulation::SimulationPlugin;
+use touch::TouchCameraPlugin;
 
 fn main() {
     App::new()
@@ -30,9 +35,9 @@ fn main() {
         .add_plugins(EguiPlugin)
         .add_plugins(DefaultInspectorConfigPlugin)
         .add_plugins(PanOrbitCameraPlugin)
-        .add_plugins(
-            WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
-        )
+        .add_plugins(TouchCameraPlugin::default())
+        .add_plugins(KeyboardPlugin)
+        .add_plugins(WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::W)))
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 1.0,

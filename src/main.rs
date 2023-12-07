@@ -34,7 +34,7 @@ fn main() {
         .add_plugins(AssetsPlugin)
         .add_plugins(EguiPlugin)
         .add_plugins(DefaultInspectorConfigPlugin)
-        .add_plugins(PanOrbitCameraPlugin)
+        // .add_plugins(PanOrbitCameraPlugin)
         .add_plugins(KeyboardPlugin)
         .add_plugins(WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::W)))
         .add_plugins(SimulationPlugin)

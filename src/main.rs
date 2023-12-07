@@ -5,6 +5,7 @@ use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_panorbit_camera::*;
+use bevy_window::PresentMode;
 mod assets;
 mod identifiers;
 mod resources;
@@ -17,7 +18,14 @@ fn main() {
     App::new()
         .init_resource::<Configuration>()
         .register_type::<Configuration>()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
+                fit_canvas_to_parent: true,
+                ..default()
+            }),
+            ..default()
+        }))
         .add_plugins(AssetsPlugin)
         .add_plugins(EguiPlugin)
         .add_plugins(DefaultInspectorConfigPlugin)

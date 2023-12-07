@@ -29,7 +29,7 @@ fn update_identifiers(
     let mut rng = rand::thread_rng();
     let current_count = query.iter().count() as u32;
     let target_count = configuration.identifiers;
-
+    #[allow(clippy::comparison_chain)]
     if target_count > current_count {
         // Spawn additional cubes
         for _ in 0..(target_count - current_count) {

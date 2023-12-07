@@ -70,13 +70,21 @@ fn inspector_ui(
 ) {
     let mut egui_context = query.single().clone();
 
-    egui::Window::new("Configuration").show(egui_context.get_mut(), |ui| {
-        egui::ScrollArea::vertical().show(ui, |ui| {
+    egui::Window::new("Configuration")
+        .vscroll(false)
+        .hscroll(false)
+        .default_width(250.0)
+        .resizable(false)
+        .show(egui_context.get_mut(), |ui| {
             // bevy_inspector_egui::bevy_inspector::ui_for_resource::<Configuration>(world, ui);
             ui.add(
                 egui::Slider::new(&mut configuration.identifiers, 0..=100000).text("Identifiers"),
             );
             ui.add(egui::Slider::new(&mut configuration.container_size, 0.0..=100.0).text("Space"));
+            ui.add(
+                egui::Slider::new(&mut configuration.animation_duration, 1..=10)
+                    .text("Duration (sec)"),
+            );
             ui.separator();
             if ui.button("Move camera randomly").clicked() {
                 if let Ok((entity, transform)) = camera_q.get_single_mut() {
@@ -96,12 +104,13 @@ fn inspector_ui(
                             .looking_at(Vec3::ZERO, Vec3::Y),
                             EaseFunction::QuarticInOut,
                             bevy_easings::EasingType::Once {
-                                duration: (std::time::Duration::from_secs(1)),
+                                duration: (std::time::Duration::from_secs(
+                                    configuration.animation_duration,
+                                )),
                             },
                         ),
                     );
                 };
             }
         });
-    });
 }

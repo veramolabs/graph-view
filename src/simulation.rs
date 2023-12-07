@@ -45,9 +45,8 @@ fn update_identifiers(
                 MaterialMeshBundle {
                     // ... Mesh, Material, Transform
                     mesh: my_assets.mesh_handle.clone(),
-                    material: my_assets.material_handle.clone(),
                     // material: my_assets.material_handle.clone(),
-                    // material: my_assets.color_material_handle.clone(),
+                    material: my_assets.color_material_handle.clone(),
                     transform: Transform::from_xyz(x, y, z),
 
                     ..Default::default()

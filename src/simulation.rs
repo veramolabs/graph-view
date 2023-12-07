@@ -3,8 +3,10 @@ use crate::identifiers::Identifier;
 use crate::resources::Configuration;
 use bevy::input::common_conditions::input_toggle_active;
 use bevy::prelude::*;
+use bevy_easings::*;
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::egui;
+use bevy_panorbit_camera::PanOrbitCamera;
 use bevy_window::PrimaryWindow;
 use rand::Rng;
 
@@ -25,7 +27,6 @@ fn update_identifiers(
     configuration: Res<Configuration>,
     query: Query<Entity, &Identifier>,
     my_assets: ResMut<MyAssets>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     if !configuration.is_changed() {
         return;
@@ -44,10 +45,7 @@ fn update_identifiers(
                 MaterialMeshBundle {
                     // ... Mesh, Material, Transform
                     mesh: my_assets.mesh_handle.clone(),
-                    material: materials.add(StandardMaterial {
-                        base_color: Color::ORANGE,
-                        ..default()
-                    }),
+                    material: my_assets.material_handle.clone(),
                     // material: my_assets.material_handle.clone(),
                     // material: my_assets.color_material_handle.clone(),
                     transform: Transform::from_xyz(x, y, z),
@@ -66,8 +64,10 @@ fn update_identifiers(
 }
 
 fn inspector_ui(
+    mut commands: Commands,
     mut configuration: ResMut<Configuration>,
     query: Query<&mut EguiContext, With<PrimaryWindow>>,
+    mut camera_q: Query<(Entity, &Transform), With<PanOrbitCamera>>,
 ) {
     let mut egui_context = query.single().clone();
 
@@ -75,11 +75,34 @@ fn inspector_ui(
         egui::ScrollArea::vertical().show(ui, |ui| {
             // bevy_inspector_egui::bevy_inspector::ui_for_resource::<Configuration>(world, ui);
             ui.add(
-                egui::Slider::new(&mut configuration.identifiers, 0..=10000).text("Identifiers"),
+                egui::Slider::new(&mut configuration.identifiers, 0..=100000).text("Identifiers"),
             );
             ui.add(egui::Slider::new(&mut configuration.container_size, 0.0..=100.0).text("Space"));
             ui.separator();
-            ui.label("Press space to toggle");
+            if ui.button("Move camera randomly").clicked() {
+                if let Ok((entity, transform)) = camera_q.get_single_mut() {
+                    commands.entity(entity).insert(
+                        transform.ease_to(
+                            Transform::from_xyz(
+                                rand::thread_rng().gen_range(
+                                    -configuration.container_size..=configuration.container_size,
+                                ),
+                                rand::thread_rng().gen_range(
+                                    -configuration.container_size..=configuration.container_size,
+                                ),
+                                rand::thread_rng().gen_range(
+                                    -configuration.container_size..=configuration.container_size,
+                                ),
+                            )
+                            .looking_at(Vec3::ZERO, Vec3::Y),
+                            EaseFunction::QuarticInOut,
+                            bevy_easings::EasingType::Once {
+                                duration: (std::time::Duration::from_secs(1)),
+                            },
+                        ),
+                    );
+                };
+            }
         });
     });
 }

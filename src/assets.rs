@@ -44,8 +44,8 @@ fn setup(
         .unwrap(),
     );
     my_assets.material_handle = materials.add(CustomMaterial {
-        color: Color::GREEN,
-        is_red: true,
+        color: Color::GOLD,
+        is_red: false,
     });
     my_assets.color_material_handle = color_materials.add(ColorMaterial {
         color: Color::GREEN,

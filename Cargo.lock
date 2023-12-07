@@ -2053,10 +2053,11 @@ dependencies = [
 
 [[package]]
 name = "graph-view"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",
+ "bevy_easings",
  "bevy_egui",
  "bevy_panorbit_camera",
  "bevy_window",

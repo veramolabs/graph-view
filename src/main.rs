@@ -1,6 +1,7 @@
 use bevy::input::common_conditions::input_toggle_active;
 use bevy::pbr::ClusterConfig;
 use bevy::prelude::*;
+use bevy_easings::EasingsPlugin;
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
@@ -31,6 +32,7 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugins(EasingsPlugin)
         .add_plugins(AssetsPlugin)
         .add_plugins(EguiPlugin)
         .add_plugins(DefaultInspectorConfigPlugin)
@@ -38,10 +40,6 @@ fn main() {
         .add_plugins(TouchCameraPlugin::default())
         .add_plugins(KeyboardPlugin)
         .add_plugins(WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::W)))
-        .insert_resource(AmbientLight {
-            color: Color::WHITE,
-            brightness: 1.0,
-        })
         .add_plugins(SimulationPlugin)
         .add_systems(Startup, setup)
         .run();

@@ -17,7 +17,7 @@ use assets::AssetsPlugin;
 use keyboard::KeyboardPlugin;
 use resources::Configuration;
 use simulation::SimulationPlugin;
-use touch::TouchCameraPlugin;
+use touch::{TouchCameraPlugin, TouchCameraTag};
 
 fn main() {
     App::new()
@@ -60,5 +60,6 @@ fn setup(
         },
         ClusterConfig::Single,
         PanOrbitCamera::default(),
+        TouchCameraTag,
     ));
 }

@@ -1,17 +1,12 @@
 [package]
 name = "graph-view"
-version = "0.1.11"
+version = "0.1.12"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.12", default-features = false, features = [
-    "bevy_pbr",
-    "multi-threaded",
-    "webgl2",
-    "tonemapping_luts",
-] }
+bevy = "0.12"
 bevy-inspector-egui="0.21"
 bevy_window="0.12"
 bevy_egui="0.23"

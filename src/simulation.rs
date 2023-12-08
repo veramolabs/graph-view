@@ -44,14 +44,17 @@ fn update_identifiers(
             let z = rng.gen_range(-configuration.container_size..configuration.container_size);
             commands.spawn((
                 MaterialMeshBundle {
-                    // ... Mesh, Material, Transform
                     mesh: my_assets.identifier_mesh_handle.clone(),
-                    // material: my_assets.material_handle.clone(),
                     material: my_assets.identifier_material_handle.clone(),
-                    transform: Transform::from_xyz(x, y, z),
-
                     ..Default::default()
                 },
+                Transform::IDENTITY.ease_to(
+                    Transform::from_xyz(x, y, z),
+                    bevy_easings::EaseFunction::QuadraticOut,
+                    bevy_easings::EasingType::Once {
+                        duration: std::time::Duration::from_secs(configuration.animation_duration),
+                    },
+                ),
                 Identifier {},
             ));
 

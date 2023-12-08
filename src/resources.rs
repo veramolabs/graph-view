@@ -7,6 +7,7 @@ pub struct Configuration {
     pub identifiers: u32,
     pub container_size: f32,
     pub animation_duration: u64,
+    pub connections: u32,
 }
 
 impl Default for Configuration {
@@ -15,6 +16,7 @@ impl Default for Configuration {
             identifiers: 8000,
             container_size: 50.0,
             animation_duration: 5,
+            connections: 0,
         }
     }
 }

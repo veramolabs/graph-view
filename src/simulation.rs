@@ -1,5 +1,5 @@
 use crate::assets::MyAssets;
-use crate::identifiers::Identifier;
+use crate::identifiers::{Connection, Identifier};
 use crate::resources::Configuration;
 use bevy::input::common_conditions::input_toggle_active;
 use bevy::prelude::*;
@@ -18,7 +18,8 @@ impl Plugin for SimulationPlugin {
             Update,
             inspector_ui.run_if(input_toggle_active(true, KeyCode::C)),
         )
-        .add_systems(Update, update_identifiers);
+        .add_systems(Update, update_identifiers)
+        .add_systems(Update, update_connections);
     }
 }
 
@@ -44,9 +45,9 @@ fn update_identifiers(
             commands.spawn((
                 MaterialMeshBundle {
                     // ... Mesh, Material, Transform
-                    mesh: my_assets.mesh_handle.clone(),
+                    mesh: my_assets.identifier_mesh_handle.clone(),
                     // material: my_assets.material_handle.clone(),
-                    material: my_assets.color_material_handle.clone(),
+                    material: my_assets.identifier_material_handle.clone(),
                     transform: Transform::from_xyz(x, y, z),
 
                     ..Default::default()
@@ -57,6 +58,74 @@ fn update_identifiers(
     } else if target_count < current_count {
         // Despawn excess cubes
         for entity in query.iter().take((current_count - target_count) as usize) {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn update_connections(
+    mut commands: Commands,
+    configuration: Res<Configuration>,
+    identifier_query: Query<(Entity, &Identifier, &Transform)>,
+    connection_query: Query<Entity, &Connection>,
+    my_assets: ResMut<MyAssets>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    if !configuration.is_changed() {
+        return;
+    };
+    let mut rng = rand::thread_rng();
+    let current_count = connection_query.iter().count() as u32;
+    let target_count = configuration.connections;
+
+    let identifier_count = identifier_query.iter().count() as u32;
+    #[allow(clippy::comparison_chain)]
+    if target_count > current_count {
+        for _ in 0..(target_count - current_count) {
+            let (rnd1, identifier1, transform1) = identifier_query
+                .iter()
+                .nth(rng.gen_range(0..identifier_count as usize))
+                .unwrap();
+            let (rnd2, identifier2, transform2) = identifier_query
+                .iter()
+                .nth(rng.gen_range(0..identifier_count as usize))
+                .unwrap();
+
+            let mid_point = transform1.translation.lerp(transform2.translation, 0.5);
+            let distance = transform1.translation.distance(transform2.translation);
+            let rotation = Quat::from_rotation_arc(
+                Vec3::Y,
+                (transform2.translation - transform1.translation).normalize(),
+            );
+
+            commands.spawn((
+                MaterialMeshBundle {
+                    // ... Mesh, Material, Transform
+                    // mesh: my_assets.connection_mesh_handle.clone(),
+                    mesh: meshes.add(Mesh::from(shape::Capsule {
+                        radius: 0.02,
+                        depth: distance,
+                        ..Default::default()
+                    })),
+                    // material: my_assets.material_handle.clone(),
+                    material: my_assets.connection_material_handle.clone(),
+                    transform: Transform::from_xyz(mid_point.x, mid_point.y, mid_point.z)
+                        .with_rotation(rotation),
+
+                    ..Default::default()
+                },
+                Connection {
+                    from: rnd1,
+                    to: rnd2,
+                },
+            ));
+        }
+    } else if target_count < current_count {
+        // Despawn excess cubes
+        for entity in connection_query
+            .iter()
+            .take((current_count - target_count) as usize)
+        {
             commands.entity(entity).despawn();
         }
     }
@@ -79,6 +148,9 @@ fn inspector_ui(
             // bevy_inspector_egui::bevy_inspector::ui_for_resource::<Configuration>(world, ui);
             ui.add(
                 egui::Slider::new(&mut configuration.identifiers, 0..=100000).text("Identifiers"),
+            );
+            ui.add(
+                egui::Slider::new(&mut configuration.connections, 0..=100000).text("Connections"),
             );
             ui.add(egui::Slider::new(&mut configuration.container_size, 0.0..=100.0).text("Space"));
             ui.add(

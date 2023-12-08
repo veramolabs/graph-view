@@ -36,13 +36,15 @@ fn setup(
         ..Default::default()
     });
 
-    my_assets.connection_mesh_handle = meshes.add(Mesh::from(shape::Capsule {
-        radius: 0.05,
-        depth: 3.0,
+    my_assets.connection_mesh_handle = meshes.add(Mesh::from(shape::Cylinder {
+        radius: 0.005,
+        height: 1.0,
+        resolution: 5,
+        segments: 1,
         ..Default::default()
     }));
     my_assets.connection_material_handle = color_materials.add(StandardMaterial {
-        emissive: Color::BLUE.with_a(0.5),
+        base_color: Color::rgb(0.1, 0.1, 0.6),
         ..Default::default()
     });
 }

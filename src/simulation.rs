@@ -54,6 +54,8 @@ fn update_identifiers(
                 },
                 Identifier {},
             ));
+
+            // spaw point light
         }
     } else if target_count < current_count {
         // Despawn excess cubes
@@ -100,17 +102,11 @@ fn update_connections(
 
             commands.spawn((
                 MaterialMeshBundle {
-                    // ... Mesh, Material, Transform
-                    // mesh: my_assets.connection_mesh_handle.clone(),
-                    mesh: meshes.add(Mesh::from(shape::Capsule {
-                        radius: 0.02,
-                        depth: distance,
-                        ..Default::default()
-                    })),
-                    // material: my_assets.material_handle.clone(),
+                    mesh: my_assets.connection_mesh_handle.clone(),
                     material: my_assets.connection_material_handle.clone(),
                     transform: Transform::from_xyz(mid_point.x, mid_point.y, mid_point.z)
-                        .with_rotation(rotation),
+                        .with_rotation(rotation)
+                        .with_scale(Vec3::new(1.0, distance, 1.0)),
 
                     ..Default::default()
                 },
@@ -150,7 +146,7 @@ fn inspector_ui(
                 egui::Slider::new(&mut configuration.identifiers, 0..=100000).text("Identifiers"),
             );
             ui.add(
-                egui::Slider::new(&mut configuration.connections, 0..=100000).text("Connections"),
+                egui::Slider::new(&mut configuration.connections, 0..=10000).text("Connections"),
             );
             ui.add(egui::Slider::new(&mut configuration.container_size, 0.0..=100.0).text("Space"));
             ui.add(

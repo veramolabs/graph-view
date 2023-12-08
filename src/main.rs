@@ -34,7 +34,7 @@ fn main() {
         .add_plugins(AssetsPlugin)
         .add_plugins(EguiPlugin)
         .add_plugins(DefaultInspectorConfigPlugin)
-        .add_plugins(PanOrbitCameraPlugin)
+        // .add_plugins(PanOrbitCameraPlugin)
         .add_plugins(KeyboardPlugin)
         .add_plugins(WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::W)))
         .add_plugins(SimulationPlugin)
@@ -42,18 +42,22 @@ fn main() {
         .run();
 }
 
-/// set up a simple 3D scene
-fn setup(
-    mut commands: Commands,
-    //    mut meshes: ResMut<Assets<Mesh>>,
-    //    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn setup(mut commands: Commands) {
+    let initial_camera_location = Vec3::new(-2.0, 2.5, 5.0);
+
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+            transform: Transform::from_translation(initial_camera_location)
+                .looking_at(Vec3::ZERO, Vec3::Y),
             ..default()
         },
         ClusterConfig::Single,
         PanOrbitCamera::default(),
+        // PointLight {
+        //     intensity: 5600.0, // lumens - roughly a 100W non-halogen incandescent bulb
+        //     color: Color::WHITE,
+        //     shadows_enabled: false,
+        //     ..default()
+        // },
     ));
 }

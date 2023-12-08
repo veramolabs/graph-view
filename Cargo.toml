@@ -1,6 +1,6 @@
 [package]
 name = "graph-view"
-version = "0.1.10"
+version = "0.1.11"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,9 +20,9 @@ bevy_panorbit_camera = { version="0.9", features=["bevy_egui"] }
 bevy_easings = "0.12.2"
 
 [profile.release]
-lto = "fat"
+lto = true
 codegen-units = 1
-opt-level = 's'
+
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]

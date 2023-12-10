@@ -9,6 +9,7 @@ use bevy_inspector_egui::egui;
 use bevy_panorbit_camera::PanOrbitCamera;
 use bevy_window::PrimaryWindow;
 use rand::Rng;
+use std::f64::consts::PI;
 
 pub struct SimulationPlugin;
 
@@ -32,33 +33,31 @@ fn update_identifiers(
     if !configuration.is_changed() {
         return;
     };
-    let mut rng = rand::thread_rng();
     let current_count = query.iter().count() as u32;
     let target_count = configuration.identifiers;
     #[allow(clippy::comparison_chain)]
     if target_count > current_count {
-        // Spawn additional cubes
         for _ in 0..(target_count - current_count) {
-            let x = rng.gen_range(-configuration.container_size..configuration.container_size);
-            let y = rng.gen_range(-configuration.container_size..configuration.container_size);
-            let z = rng.gen_range(-configuration.container_size..configuration.container_size);
+            let (x, y, z) = random_point_in_sphere(configuration.container_size);
             commands.spawn((
                 MaterialMeshBundle {
                     mesh: my_assets.identifier_mesh_handle.clone(),
                     material: my_assets.identifier_material_handle.clone(),
                     ..Default::default()
                 },
-                Transform::IDENTITY.ease_to(
-                    Transform::from_xyz(x, y, z),
-                    bevy_easings::EaseFunction::QuadraticOut,
-                    bevy_easings::EasingType::Once {
-                        duration: std::time::Duration::from_secs(configuration.animation_duration),
-                    },
-                ),
+                Transform::from_xyz(x, y, z)
+                    .with_scale(Vec3::new(0.0001, 0.0001, 0.0001))
+                    .ease_to(
+                        Transform::from_xyz(x, y, z).with_scale(Vec3::new(1.0, 1.0, 1.0)),
+                        bevy_easings::EaseFunction::QuadraticOut,
+                        bevy_easings::EasingType::Once {
+                            duration: std::time::Duration::from_secs(
+                                configuration.animation_duration,
+                            ),
+                        },
+                    ),
                 Identifier {},
             ));
-
-            // spaw point light
         }
     } else if target_count < current_count {
         // Despawn excess cubes
@@ -66,6 +65,20 @@ fn update_identifiers(
             commands.entity(entity).despawn();
         }
     }
+}
+
+fn random_point_in_sphere(radius: f32) -> (f32, f32, f32) {
+    let mut rng = rand::thread_rng();
+    let theta = rng.gen::<f32>() * 2.0 * PI as f32;
+    let phi = rng.gen::<f32>() * PI as f32;
+    let u = rng.gen::<f32>() * radius.powi(3);
+
+    let r = u.cbrt();
+    let x = r * phi.sin() * theta.cos();
+    let y = r * phi.sin() * theta.sin();
+    let z = r * phi.cos();
+
+    (x, y, z)
 }
 
 fn update_connections(
@@ -107,12 +120,22 @@ fn update_connections(
                 MaterialMeshBundle {
                     mesh: my_assets.connection_mesh_handle.clone(),
                     material: my_assets.connection_material_handle.clone(),
-                    transform: Transform::from_xyz(mid_point.x, mid_point.y, mid_point.z)
-                        .with_rotation(rotation)
-                        .with_scale(Vec3::new(1.0, distance, 1.0)),
-
                     ..Default::default()
                 },
+                Transform::from_xyz(mid_point.x, mid_point.y, mid_point.z)
+                    .with_rotation(rotation)
+                    .with_scale(Vec3::new(1.0, 0.00001, 1.0))
+                    .ease_to(
+                        Transform::from_xyz(mid_point.x, mid_point.y, mid_point.z)
+                            .with_rotation(rotation)
+                            .with_scale(Vec3::new(1.0, distance, 1.0)),
+                        bevy_easings::EaseFunction::QuadraticInOut,
+                        bevy_easings::EasingType::Once {
+                            duration: std::time::Duration::from_secs(
+                                configuration.animation_duration,
+                            ),
+                        },
+                    ),
                 Connection {
                     from: rnd1,
                     to: rnd2,

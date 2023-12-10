@@ -8,12 +8,15 @@ use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_panorbit_camera::*;
 use bevy_window::PresentMode;
 mod assets;
+mod events;
 mod identifiers;
 mod keyboard;
 mod resources;
 mod simulation;
 
 use assets::AssetsPlugin;
+use events::EventsPlugin;
+use identifiers::IdentifiersPlugin;
 use keyboard::KeyboardPlugin;
 use resources::Configuration;
 use simulation::SimulationPlugin;
@@ -32,6 +35,8 @@ fn main() {
         }))
         .add_plugins(EasingsPlugin)
         .add_plugins(AssetsPlugin)
+        .add_plugins(EventsPlugin)
+        .add_plugins(IdentifiersPlugin)
         .add_plugins(EguiPlugin)
         .add_plugins(DefaultInspectorConfigPlugin)
         // .add_plugins(PanOrbitCameraPlugin)
@@ -42,7 +47,11 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands) {
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
     let initial_camera_location = Vec3::new(-2.0, 2.5, 5.0);
 
     commands.spawn((
@@ -60,4 +69,12 @@ fn setup(mut commands: Commands) {
         //     ..default()
         // },
     ));
+
+    // cube
+    // commands.spawn(PbrBundle {
+    //     mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+    //     material: materials.add(Color::rgb_u8(124, 144, 255).into()),
+    //     transform: Transform::from_xyz(0.0, 0.0, 0.0),
+    //     ..default()
+    // });
 }

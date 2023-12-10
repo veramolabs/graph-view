@@ -1,4 +1,5 @@
 use crate::assets::MyAssets;
+use crate::events::SelectRandomIdentifierEvent;
 use crate::identifiers::{Connection, Identifier};
 use crate::resources::Configuration;
 use bevy::input::common_conditions::input_toggle_active;
@@ -87,7 +88,6 @@ fn update_connections(
     identifier_query: Query<(Entity, &Identifier, &Transform)>,
     connection_query: Query<Entity, &Connection>,
     my_assets: ResMut<MyAssets>,
-    mut meshes: ResMut<Assets<Mesh>>,
 ) {
     if !configuration.is_changed() {
         return;
@@ -158,6 +158,7 @@ fn inspector_ui(
     mut configuration: ResMut<Configuration>,
     query: Query<&mut EguiContext, With<PrimaryWindow>>,
     mut camera_q: Query<(Entity, &Transform), With<PanOrbitCamera>>,
+    mut ev_rnd_id: EventWriter<SelectRandomIdentifierEvent>,
 ) {
     let mut egui_context = query.single().clone();
 
@@ -179,6 +180,10 @@ fn inspector_ui(
                 egui::Slider::new(&mut configuration.animation_duration, 1..=10)
                     .text("Duration (sec)"),
             );
+            ui.separator();
+            if ui.button("Select random identifier").clicked() {
+                ev_rnd_id.send(SelectRandomIdentifierEvent);
+            }
             ui.separator();
             if ui.button("Move camera randomly").clicked() {
                 if let Ok((entity, transform)) = camera_q.get_single_mut() {

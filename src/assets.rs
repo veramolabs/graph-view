@@ -5,6 +5,8 @@ use bevy::prelude::*;
 pub struct MyAssets {
     pub identifier_mesh_handle: Handle<Mesh>,
     pub identifier_material_handle: Handle<StandardMaterial>,
+    pub identifier_selected_material_handle: Handle<StandardMaterial>,
+    pub identifier_connected_material_handle: Handle<StandardMaterial>,
     pub connection_mesh_handle: Handle<Mesh>,
     pub connection_material_handle: Handle<StandardMaterial>,
 }
@@ -31,6 +33,14 @@ fn setup(
         })
         .unwrap(),
     );
+    my_assets.identifier_connected_material_handle = color_materials.add(StandardMaterial {
+        emissive: Color::rgb(0.1, 0.1, 0.9),
+        ..Default::default()
+    });
+    my_assets.identifier_selected_material_handle = color_materials.add(StandardMaterial {
+        emissive: Color::RED,
+        ..Default::default()
+    });
     my_assets.identifier_material_handle = color_materials.add(StandardMaterial {
         emissive: Color::GOLD,
         ..Default::default()

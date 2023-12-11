@@ -209,7 +209,6 @@ fn inspector_ui(
             if ui.button("Select random identifier").clicked() {
                 ev_rnd_id.send(SelectRandomIdentifierEvent);
             }
-            ui.separator();
             if ui.button("Select random connected identifier").clicked() {
                 ev_rnd_c_id.send(SelectRandomConnectedIdentifierEvent);
             }

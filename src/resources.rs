@@ -14,7 +14,7 @@ impl Default for Configuration {
     fn default() -> Self {
         Self {
             identifiers: 8000,
-            container_size: 20.0,
+            container_size: 30.0,
             animation_duration: 6,
             connections: 30000,
         }

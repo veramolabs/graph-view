@@ -34,27 +34,28 @@ fn setup(
         .unwrap(),
     );
     my_assets.identifier_connected_material_handle = color_materials.add(StandardMaterial {
-        emissive: Color::rgb(0.1, 0.1, 0.9),
+        base_color: Color::rgb(0.1, 0.1, 0.9),
         ..Default::default()
     });
     my_assets.identifier_selected_material_handle = color_materials.add(StandardMaterial {
-        emissive: Color::RED,
+        base_color: Color::RED,
         ..Default::default()
     });
     my_assets.identifier_material_handle = color_materials.add(StandardMaterial {
-        emissive: Color::GOLD,
+        base_color: Color::GOLD.with_a(0.6),
+        alpha_mode: AlphaMode::Blend,
         ..Default::default()
     });
 
     my_assets.connection_mesh_handle = meshes.add(Mesh::from(shape::Cylinder {
-        radius: 0.005,
+        radius: 0.02,
         height: 1.0,
         resolution: 5,
         segments: 1,
-        ..Default::default()
     }));
     my_assets.connection_material_handle = color_materials.add(StandardMaterial {
-        emissive: Color::rgb(0.1, 0.1, 0.9),
+        base_color: Color::rgb(0.1, 0.1, 0.9).with_a(0.7),
+        alpha_mode: AlphaMode::Blend,
         ..Default::default()
     });
 }

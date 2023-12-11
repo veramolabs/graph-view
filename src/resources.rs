@@ -13,10 +13,10 @@ pub struct Configuration {
 impl Default for Configuration {
     fn default() -> Self {
         Self {
-            identifiers: 10,
-            container_size: 2.0,
-            animation_duration: 2,
-            connections: 0,
+            identifiers: 8000,
+            container_size: 20.0,
+            animation_duration: 6,
+            connections: 30000,
         }
     }
 }

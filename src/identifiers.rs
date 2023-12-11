@@ -3,7 +3,11 @@ use bevy_easings::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use rand::Rng;
 
-use crate::{assets::MyAssets, events::SelectRandomIdentifierEvent, resources::Configuration};
+use crate::{
+    assets::MyAssets,
+    events::{SelectRandomConnectedIdentifierEvent, SelectRandomIdentifierEvent},
+    resources::Configuration,
+};
 
 #[derive(Component)]
 pub struct Identifier;
@@ -25,17 +29,54 @@ impl Plugin for IdentifiersPlugin {
         app.init_resource::<SelectedIdentifier>()
             .register_type::<SelectedIdentifier>()
             .add_systems(Update, select_random_identifier)
+            .add_systems(Update, select_random_connected_identifier)
             .add_systems(Update, update_identifiers_and_connections)
             .add_systems(Update, zoom_camera_to_selected_identifier);
     }
 }
 
+fn select_random_connected_identifier(
+    mut selected_identifier: ResMut<SelectedIdentifier>,
+    mut ev_rnd_c: EventReader<SelectRandomConnectedIdentifierEvent>,
+    connection_query: Query<(Entity, &Connection), With<Connection>>,
+) {
+    #[allow(deprecated)]
+    for _ in ev_rnd_c.iter() {
+        // connections that have selected identifier as from or to
+        let connections: Vec<(Entity, &Connection)> = connection_query
+            .iter()
+            .filter(|(_, connection)| {
+                if let Some(selected_identifier) = selected_identifier.0 {
+                    connection.from == selected_identifier || connection.to == selected_identifier
+                } else {
+                    false
+                }
+            })
+            .collect();
+
+        if connections.is_empty() {
+            return;
+        }
+        // randomly select identifier from connections that is not the original selected identifier
+        let mut rng = rand::thread_rng();
+        if let Some(random_connection) = connections.get(rng.gen_range(0..connections.len())) {
+            if let Some(currently_selected_identifier) = selected_identifier.0 {
+                if random_connection.1.from == currently_selected_identifier {
+                    selected_identifier.0 = Some(random_connection.1.to);
+                } else {
+                    selected_identifier.0 = Some(random_connection.1.from);
+                }
+            }
+        };
+    }
+}
+
 fn select_random_identifier(
-    mut commands: Commands,
     mut selected_identifier: ResMut<SelectedIdentifier>,
     mut ev_rnd: EventReader<SelectRandomIdentifierEvent>,
     query: Query<(Entity, &Identifier)>,
 ) {
+    #[allow(deprecated)]
     for _ in ev_rnd.iter() {
         let identifier_count = query.iter().count() as u32;
         let mut rng = rand::thread_rng();
@@ -62,27 +103,47 @@ fn zoom_camera_to_selected_identifier(
     };
 
     if let Some(id) = selected_identifier.0 {
-        let &identifier_transform = identifier_query.get(id).unwrap();
-        if let Ok((camera_entity, &camera_transform)) = camera_query.get_single_mut() {
-            let direction = identifier_transform.translation - Vec3::ZERO;
-            let normalized_direction = direction.normalize();
-            let desired_distance = 3.0;
+        if let Ok(&identifier_transform) = identifier_query.get(id) {
+            if let Ok((camera_entity, &camera_transform)) = camera_query.get_single_mut() {
+                let direction = identifier_transform.translation - Vec3::ZERO;
+                let normalized_direction = direction.normalize();
+                let desired_distance = 3.0;
 
-            let camera_position =
-                identifier_transform.translation + normalized_direction * desired_distance;
+                let camera_position =
+                    identifier_transform.translation + normalized_direction * desired_distance;
 
-            commands.entity(camera_entity).insert(
-                camera_transform.ease_to(
-                    Transform::from_xyz(camera_position.x, camera_position.y, camera_position.z)
-                        .looking_at(identifier_transform.translation, Vec3::Y),
-                    EaseFunction::QuarticOut,
-                    bevy_easings::EasingType::Once {
-                        duration: (std::time::Duration::from_secs(
-                            configuration.animation_duration,
-                        )),
-                    },
-                ),
-            );
+                let mid_point = camera_transform
+                    .translation
+                    .lerp(identifier_transform.translation, 0.9);
+
+                commands.entity(camera_entity).insert(
+                    camera_transform
+                        .ease_to(
+                            Transform::from_translation(mid_point)
+                                .looking_at(identifier_transform.translation, Vec3::Y),
+                            EaseFunction::QuinticInOut,
+                            bevy_easings::EasingType::Once {
+                                duration: (std::time::Duration::from_secs(
+                                    configuration.animation_duration / 2,
+                                )),
+                            },
+                        )
+                        .ease_to(
+                            Transform::from_xyz(
+                                camera_position.x,
+                                camera_position.y,
+                                camera_position.z,
+                            )
+                            .looking_at(identifier_transform.translation, Vec3::Y),
+                            EaseFunction::QuarticInOut,
+                            bevy_easings::EasingType::Once {
+                                duration: (std::time::Duration::from_secs(
+                                    configuration.animation_duration / 2,
+                                )),
+                            },
+                        ),
+                );
+            };
         };
     }
 }
@@ -90,10 +151,10 @@ fn zoom_camera_to_selected_identifier(
 fn update_identifiers_and_connections(
     mut commands: Commands,
     my_assets: ResMut<MyAssets>,
-    configuration: Res<Configuration>,
+    // configuration: Res<Configuration>,
     selected_identifier: Res<SelectedIdentifier>,
     identifier_query: Query<(Entity, &Transform), With<Identifier>>,
-    connection_query: Query<(Entity, &Connection, &Transform), With<Connection>>,
+    connection_query: Query<(Entity, &Connection), With<Connection>>,
 ) {
     if !selected_identifier.is_changed() {
         return;
@@ -104,46 +165,42 @@ fn update_identifiers_and_connections(
             commands.entity(identifier).insert(MaterialMeshBundle {
                 mesh: my_assets.identifier_mesh_handle.clone(),
                 material: my_assets.identifier_selected_material_handle.clone(),
-                transform: identifier_transform
-                    .clone()
-                    .with_scale(Vec3::new(1.0, 1.0, 1.0)),
+                transform: identifier_transform.with_scale(Vec3::new(1.0, 1.0, 1.0)),
                 ..Default::default()
             });
         }
 
-        // hide all other identifiers
+        // scale all other identifiers
         for (identifier, &identifier_transform) in
             identifier_query.iter().filter(|(entity, _)| *entity != id)
         {
             commands.entity(identifier).insert(MaterialMeshBundle {
                 mesh: my_assets.identifier_mesh_handle.clone(),
                 material: my_assets.identifier_material_handle.clone(),
-                transform: identifier_transform
-                    .clone()
-                    .with_scale(Vec3::new(0.5, 0.5, 0.5)),
+                transform: identifier_transform.with_scale(Vec3::new(0.5, 0.5, 0.5)),
                 ..Default::default()
             });
         }
 
         // show only connections that have from or to as  selected identifier
-        for (connection_entity, &connection, &connection_transform) in connection_query.iter() {
+        for (connection_entity, &connection) in connection_query.iter() {
             if connection.from == id || connection.to == id {
-                if let Ok((entity, &transform)) = identifier_query.get(connection.to.clone()) {
+                if let Ok((entity, &transform)) = identifier_query.get(connection.to) {
                     if entity != id {
                         commands.entity(entity).insert(MaterialMeshBundle {
                             mesh: my_assets.identifier_mesh_handle.clone(),
                             material: my_assets.identifier_connected_material_handle.clone(),
-                            transform: transform.clone().with_scale(Vec3::new(1.0, 1.0, 1.0)),
+                            transform: transform.with_scale(Vec3::new(1.0, 1.0, 1.0)),
                             ..Default::default()
                         });
                     }
                 }
-                if let Ok((entity, &transform)) = identifier_query.get(connection.from.clone()) {
+                if let Ok((entity, &transform)) = identifier_query.get(connection.from) {
                     if entity != id {
                         commands.entity(entity).insert(MaterialMeshBundle {
                             mesh: my_assets.identifier_mesh_handle.clone(),
                             material: my_assets.identifier_connected_material_handle.clone(),
-                            transform: transform.clone().with_scale(Vec3::new(1.0, 1.0, 1.0)),
+                            transform: transform.with_scale(Vec3::new(1.0, 1.0, 1.0)),
                             ..Default::default()
                         });
                     }

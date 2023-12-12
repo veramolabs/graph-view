@@ -1,5 +1,8 @@
 use crate::assets::MyAssets;
-use crate::events::{SelectRandomConnectedIdentifierEvent, SelectRandomIdentifierEvent};
+use crate::events::{
+    AddConnectionsEvent, AddIdentifiersEvent, MoveIdentifiersRndEvent,
+    SelectRandomConnectedIdentifierEvent, SelectRandomIdentifierEvent,
+};
 use crate::identifiers::{Connection, Identifier};
 use crate::resources::Configuration;
 use bevy::input::common_conditions::input_toggle_active;
@@ -18,53 +21,16 @@ impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            inspector_ui.run_if(input_toggle_active(true, KeyCode::C)),
+            (
+                inspector_ui.run_if(input_toggle_active(true, KeyCode::C)),
+                simulation_ui,
+            ),
         )
-        .add_systems(Update, update_identifiers.before(update_connections))
-        .add_systems(Update, update_connections.after(update_identifiers));
-    }
-}
-
-fn update_identifiers(
-    mut commands: Commands,
-    configuration: Res<Configuration>,
-    query: Query<Entity, &Identifier>,
-    my_assets: ResMut<MyAssets>,
-) {
-    if !configuration.is_changed() {
-        return;
-    };
-    let current_count = query.iter().count() as u32;
-    let target_count = configuration.identifiers;
-    #[allow(clippy::comparison_chain)]
-    if target_count > current_count {
-        for _ in 0..(target_count - current_count) {
-            let (x, y, z) = random_point_in_sphere(configuration.container_size);
-            commands.spawn((
-                MaterialMeshBundle {
-                    mesh: my_assets.identifier_mesh_handle.clone(),
-                    material: my_assets.identifier_material_handle.clone(),
-                    ..Default::default()
-                },
-                Transform::from_xyz(x, y, z)
-                    .with_scale(Vec3::new(0.0001, 0.0001, 0.0001))
-                    .ease_to(
-                        Transform::from_xyz(x, y, z).with_scale(Vec3::new(0.5, 0.5, 0.5)),
-                        bevy_easings::EaseFunction::QuadraticOut,
-                        bevy_easings::EasingType::Once {
-                            duration: std::time::Duration::from_secs(
-                                configuration.animation_duration,
-                            ),
-                        },
-                    ),
-                Identifier {},
-            ));
-        }
-    } else if target_count < current_count {
-        // Despawn excess cubes
-        for entity in query.iter().take((current_count - target_count) as usize) {
-            commands.entity(entity).despawn();
-        }
+        .register_type::<Connection>()
+        .add_systems(Update, add_connections)
+        .add_systems(Update, move_identifiers_randomly)
+        .add_systems(Update, update_connections_transforms)
+        .add_systems(Update, add_identifiers);
     }
 }
 
@@ -82,94 +48,6 @@ fn random_point_in_sphere(radius: f32) -> (f32, f32, f32) {
     (x, y, z)
 }
 
-fn update_connections(
-    mut commands: Commands,
-    configuration: Res<Configuration>,
-    identifier_query: Query<(Entity, &Transform)>,
-    connection_query: Query<Entity, &Connection>,
-    my_assets: ResMut<MyAssets>,
-) {
-    if !configuration.is_changed() {
-        return;
-    };
-    let mut rng = rand::thread_rng();
-    let current_count = connection_query.iter().count() as u32;
-    let target_count = configuration.connections;
-
-    let identifier_count = identifier_query.iter().count() as u32;
-    #[allow(clippy::comparison_chain)]
-    if target_count > current_count {
-        if identifier_count < 2 {
-            return;
-        }
-        for _ in 0..(target_count - current_count) {
-            let (rnd1, transform1) = identifier_query
-                .iter()
-                .nth(rng.gen_range(0..identifier_count as usize))
-                .unwrap();
-            let (rnd2, transform2) = identifier_query
-                .iter()
-                .nth(rng.gen_range(0..identifier_count as usize))
-                .unwrap();
-
-            let mid_point = transform1.translation.lerp(transform2.translation, 0.5);
-            let distance = transform1.translation.distance(transform2.translation);
-            let rotation = Quat::from_rotation_arc(
-                Vec3::Y,
-                (transform2.translation - transform1.translation).normalize(),
-            );
-
-            commands.spawn((
-                MaterialMeshBundle {
-                    mesh: my_assets.connection_mesh_handle.clone(),
-                    material: my_assets.connection_material_handle.clone(),
-                    transform: Transform {
-                        translation: mid_point,
-                        rotation,
-                        scale: Vec3::new(1.0, distance, 1.0),
-                    },
-                    visibility: Visibility::Hidden,
-                    ..Default::default()
-                },
-                // Transform {
-                //     translation: mid_point,
-                //     rotation,
-                //     scale: Vec3::new(1.0, distance, 1.0),
-                // },
-                // Transform::from_xyz(mid_point.x, mid_point.y, mid_point.z)
-                //     .with_rotation(rotation)
-                //     .with_scale(Vec3::new(1.0, distance, 1.0)),
-                // Transform::from_xyz(mid_point.x, mid_point.y, mid_point.z)
-                //     .with_rotation(rotation)
-                //     .with_scale(Vec3::new(1.0, 0.00001, 1.0))
-                //     .ease_to(
-                //         Transform::from_xyz(mid_point.x, mid_point.y, mid_point.z)
-                //             .with_rotation(rotation)
-                //             .with_scale(Vec3::new(1.0, distance, 1.0)),
-                //         bevy_easings::EaseFunction::QuadraticInOut,
-                //         bevy_easings::EasingType::Once {
-                //             duration: std::time::Duration::from_secs(
-                //                 configuration.animation_duration,
-                //             ),
-                //         },
-                //     ),
-                Connection {
-                    from: rnd1,
-                    to: rnd2,
-                },
-            ));
-        }
-    } else if target_count < current_count {
-        // Despawn excess cubes
-        for entity in connection_query
-            .iter()
-            .take((current_count - target_count) as usize)
-        {
-            commands.entity(entity).despawn();
-        }
-    }
-}
-
 fn inspector_ui(
     mut commands: Commands,
     mut configuration: ResMut<Configuration>,
@@ -177,6 +55,7 @@ fn inspector_ui(
     mut camera_q: Query<(Entity, &Transform), With<PanOrbitCamera>>,
     mut ev_rnd_id: EventWriter<SelectRandomIdentifierEvent>,
     mut ev_rnd_c_id: EventWriter<SelectRandomConnectedIdentifierEvent>,
+    mut ev_move: EventWriter<MoveIdentifiersRndEvent>,
 ) {
     let mut egui_context = query.single().clone();
 
@@ -186,13 +65,6 @@ fn inspector_ui(
         .default_width(250.0)
         .resizable(false)
         .show(egui_context.get_mut(), |ui| {
-            // bevy_inspector_egui::bevy_inspector::ui_for_resource::<Configuration>(world, ui);
-            ui.add(
-                egui::Slider::new(&mut configuration.identifiers, 0..=100000).text("Identifiers"),
-            );
-            ui.add(
-                egui::Slider::new(&mut configuration.connections, 0..=100000).text("Connections"),
-            );
             ui.add(egui::Slider::new(&mut configuration.container_size, 0.0..=100.0).text("Space"));
             ui.add(
                 egui::Slider::new(&mut configuration.animation_duration, 1..=10)
@@ -211,6 +83,9 @@ fn inspector_ui(
             }
             if ui.button("Select random connected identifier").clicked() {
                 ev_rnd_c_id.send(SelectRandomConnectedIdentifierEvent);
+            }
+            if ui.button("Move identifiers").clicked() {
+                ev_move.send(MoveIdentifiersRndEvent);
             }
             ui.separator();
             if ui.button("Move camera randomly").clicked() {
@@ -258,4 +133,186 @@ fn inspector_ui(
                 };
             }
         });
+}
+
+#[derive(Default)]
+struct IdentiferCount {
+    count: u32,
+}
+
+#[derive(Default)]
+struct ConnectionsCount {
+    count: u32,
+}
+
+fn simulation_ui(
+    query: Query<&mut EguiContext, With<PrimaryWindow>>,
+    mut id_count: Local<IdentiferCount>,
+    mut conn_count: Local<ConnectionsCount>,
+    mut ev_id: EventWriter<AddIdentifiersEvent>,
+    mut ev_conn: EventWriter<AddConnectionsEvent>,
+) {
+    let mut egui_context = query.single().clone();
+
+    egui::Window::new("Simulation")
+        .vscroll(false)
+        .hscroll(false)
+        .default_width(250.0)
+        .resizable(false)
+        .show(egui_context.get_mut(), |ui| {
+            ui.add(egui::Slider::new(&mut id_count.count, 0..=100000).text("Identifiers"));
+            if ui.button("Add").clicked() {
+                ev_id.send(AddIdentifiersEvent {
+                    count: id_count.count,
+                });
+            }
+            ui.separator();
+            ui.add(egui::Slider::new(&mut conn_count.count, 0..=100000).text("Connections"));
+            if ui.button("Add").clicked() {
+                ev_conn.send(AddConnectionsEvent {
+                    count: conn_count.count,
+                });
+            }
+        });
+}
+
+fn add_identifiers(
+    mut commands: Commands,
+    mut ev: EventReader<AddIdentifiersEvent>,
+    configuration: Res<Configuration>,
+    my_assets: ResMut<MyAssets>,
+) {
+    for e in ev.read() {
+        for _ in 0..e.count {
+            let (x, y, z) = random_point_in_sphere(configuration.container_size);
+            commands.spawn((
+                MaterialMeshBundle {
+                    mesh: my_assets.identifier_mesh_handle.clone(),
+                    material: my_assets.identifier_material_handle.clone(),
+                    ..Default::default()
+                },
+                Transform::from_xyz(x, y, z)
+                    .with_scale(Vec3::new(0.0001, 0.0001, 0.0001))
+                    .ease_to(
+                        Transform::from_xyz(x, y, z).with_scale(Vec3::new(0.5, 0.5, 0.5)),
+                        bevy_easings::EaseFunction::QuadraticOut,
+                        bevy_easings::EasingType::Once {
+                            duration: std::time::Duration::from_secs(
+                                configuration.animation_duration,
+                            ),
+                        },
+                    ),
+                Identifier {},
+            ));
+        }
+    }
+}
+
+fn add_connections(
+    mut commands: Commands,
+    mut ev: EventReader<AddConnectionsEvent>,
+    configuration: Res<Configuration>,
+    identifier_query: Query<(Entity, &Transform), With<Identifier>>,
+    my_assets: ResMut<MyAssets>,
+) {
+    for e in ev.read() {
+        let mut rng = rand::thread_rng();
+        let identifier_count = identifier_query.iter().count() as u32;
+
+        for _ in 0..e.count {
+            let (rnd1, transform1) = identifier_query
+                .iter()
+                .nth(rng.gen_range(0..identifier_count as usize))
+                .unwrap();
+            let (rnd2, transform2) = identifier_query
+                .iter()
+                .nth(rng.gen_range(0..identifier_count as usize))
+                .unwrap();
+
+            let mid_point = transform1.translation.lerp(transform2.translation, 0.5);
+            let distance = transform1.translation.distance(transform2.translation);
+            let rotation = Quat::from_rotation_arc(
+                Vec3::Y,
+                (transform2.translation - transform1.translation).normalize(),
+            );
+
+            commands.spawn((
+                MaterialMeshBundle {
+                    mesh: my_assets.connection_mesh_handle.clone(),
+                    material: my_assets.connection_material_handle.clone(),
+                    // transform: Transform {
+                    //     translation: mid_point,
+                    //     rotation,
+                    //     scale: Vec3::new(1.0, distance, 1.0),
+                    // },
+                    visibility: Visibility::Visible,
+                    ..Default::default()
+                },
+                Transform::from_xyz(mid_point.x, mid_point.y, mid_point.z)
+                    .with_rotation(rotation)
+                    .with_scale(Vec3::new(1.0, 0.00001, 1.0))
+                    .ease_to(
+                        Transform::from_xyz(mid_point.x, mid_point.y, mid_point.z)
+                            .with_rotation(rotation)
+                            .with_scale(Vec3::new(1.0, distance, 1.0)),
+                        bevy_easings::EaseFunction::QuadraticInOut,
+                        bevy_easings::EasingType::Once {
+                            duration: std::time::Duration::from_secs(
+                                configuration.animation_duration,
+                            ),
+                        },
+                    ),
+                Connection {
+                    from: rnd1,
+                    to: rnd2,
+                },
+            ));
+        }
+    }
+}
+
+fn move_identifiers_randomly(
+    mut commands: Commands,
+    mut ev: EventReader<MoveIdentifiersRndEvent>,
+    configuration: Res<Configuration>,
+    identifier_query: Query<(Entity, &Transform), With<Identifier>>,
+) {
+    for _ in ev.read() {
+        for (entity, transform) in identifier_query.iter() {
+            let (x, y, z) = random_point_in_sphere(configuration.container_size);
+            commands.entity(entity).insert(transform.ease_to(
+                Transform::from_xyz(x, y, z),
+                EaseFunction::QuarticOut,
+                bevy_easings::EasingType::Once {
+                    duration: (std::time::Duration::from_secs(configuration.animation_duration)),
+                },
+            ));
+        }
+    }
+}
+
+fn update_connections_transforms(
+    mut conn_query: Query<(&mut Transform, &Connection), (With<Connection>, Without<Identifier>)>,
+    id_query: Query<&Transform, (With<Identifier>, Without<Connection>)>,
+) {
+    for (mut transform, connection) in conn_query.iter_mut() {
+        if let Ok(from_transform) = id_query.get(connection.from) {
+            if let Ok(to_transform) = id_query.get(connection.to) {
+                let mid_point = from_transform
+                    .translation
+                    .lerp(to_transform.translation, 0.5);
+                let distance = from_transform
+                    .translation
+                    .distance(to_transform.translation);
+                let rotation = Quat::from_rotation_arc(
+                    Vec3::Y,
+                    (to_transform.translation - from_transform.translation).normalize(),
+                );
+
+                *transform = Transform::from_xyz(mid_point.x, mid_point.y, mid_point.z)
+                    .with_rotation(rotation)
+                    .with_scale(Vec3::new(1.0, distance, 1.0));
+            }
+        }
+    }
 }

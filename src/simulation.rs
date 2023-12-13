@@ -1,6 +1,6 @@
 use crate::assets::MyAssets;
 use crate::events::{
-    AddConnectionsEvent, AddIdentifiersEvent, MoveIdentifiersRndEvent,
+    AddConnectionsEvent, AddIdentifiersEvent, Forceatlas2Event, MoveIdentifiersRndEvent,
     SelectRandomConnectedIdentifierEvent, SelectRandomIdentifierEvent,
 };
 use crate::identifiers::{Connection, Identifier};
@@ -12,9 +12,9 @@ use bevy_egui::EguiContext;
 use bevy_inspector_egui::egui;
 use bevy_panorbit_camera::PanOrbitCamera;
 use bevy_window::PrimaryWindow;
+use forceatlas2::*;
 use rand::Rng;
 use std::f64::consts::PI;
-
 pub struct SimulationPlugin;
 
 impl Plugin for SimulationPlugin {
@@ -29,6 +29,7 @@ impl Plugin for SimulationPlugin {
         .register_type::<Connection>()
         .add_systems(Update, add_connections)
         .add_systems(Update, move_identifiers_randomly)
+        .add_systems(Update, move_identifiers_forceatlas2)
         .add_systems(Update, update_connections_transforms)
         .add_systems(Update, add_identifiers);
     }
@@ -56,6 +57,7 @@ fn inspector_ui(
     mut ev_rnd_id: EventWriter<SelectRandomIdentifierEvent>,
     mut ev_rnd_c_id: EventWriter<SelectRandomConnectedIdentifierEvent>,
     mut ev_move: EventWriter<MoveIdentifiersRndEvent>,
+    mut ev_forceatlas2: EventWriter<Forceatlas2Event>,
 ) {
     let mut egui_context = query.single().clone();
 
@@ -84,8 +86,13 @@ fn inspector_ui(
             if ui.button("Select random connected identifier").clicked() {
                 ev_rnd_c_id.send(SelectRandomConnectedIdentifierEvent);
             }
-            if ui.button("Move identifiers").clicked() {
+            if ui.button("Move identifiers randomly").clicked() {
                 ev_move.send(MoveIdentifiersRndEvent);
+            }
+            if ui.button("Move identifiers forceatlas2").clicked() {
+                ev_forceatlas2.send(Forceatlas2Event(Settings {
+                    ..Default::default()
+                }));
             }
             ui.separator();
             if ui.button("Move camera randomly").clicked() {
@@ -312,6 +319,103 @@ fn update_connections_transforms(
                 *transform = Transform::from_xyz(mid_point.x, mid_point.y, mid_point.z)
                     .with_rotation(rotation)
                     .with_scale(Vec3::new(1.0, distance, 1.0));
+            }
+        }
+    }
+}
+
+fn move_identifiers_forceatlas2(
+    mut commands: Commands,
+    mut ev: EventReader<Forceatlas2Event>,
+    configuration: Res<Configuration>,
+    identifier_query: Query<(Entity, &Transform), With<Identifier>>,
+    conn_query: Query<&Connection, With<Connection>>,
+) {
+    for settings in ev.read() {
+        // for (entity, transform) in conn_query.iter() {
+        //     let (x, y, z) = random_point_in_sphere(2.0);
+        //     commands.entity(entity).insert(transform.ease_to(
+        //         Transform::from_xyz(x, y, z),
+        //         EaseFunction::QuarticOut,
+        //         bevy_easings::EasingType::Once {
+        //             duration: (std::time::Duration::from_secs(configuration.animation_duration)),
+        //         },
+        //     ));
+        // }
+        let mut rng = rand::thread_rng();
+        const EDGES: usize = 80_000;
+        const NODES: usize = 10_000;
+        const ITERATIONS: u32 = 10;
+
+        eprintln!("Generating graph...");
+        let edges = conn_query
+            .iter()
+            .map(|connection| {
+                (
+                    connection.from.index() as usize,
+                    connection.to.index() as usize,
+                )
+            })
+            .collect();
+
+        println!("{:?}", edges);
+
+        let identier_count = identifier_query.iter().count() as usize;
+        let mut layout = Layout::<f32>::from_graph(
+            edges,
+            Nodes::Degree(identier_count),
+            None,
+            None,
+            Settings {
+                #[cfg(feature = "barnes_hut")]
+                barnes_hut: None,
+                chunk_size: Some(256),
+                dimensions: 3,
+                dissuade_hubs: false,
+                ka: 0.5,
+                kg: 1.0,
+                kr: 0.1,
+                lin_log: false,
+                prevent_overlapping: None,
+                speed: 1.0,
+                strong_gravity: false,
+            },
+        );
+
+        eprintln!("Computing layout...");
+        for i in 0..ITERATIONS {
+            println!("{}/{}", i, ITERATIONS);
+            layout.iteration();
+        }
+
+        for (h1, h2) in layout.edges.iter() {
+            println!("{:?} {:?}", h1, h2);
+            if let Ok((entity, transform)) = identifier_query.get(Entity::from_raw(*h1 as u32)) {
+                let pos = layout.points.get(*h1);
+                println!("{:?}", pos);
+                commands.entity(entity).insert(transform.ease_to(
+                    Transform::from_xyz(pos[0], pos[1], pos[2]),
+                    EaseFunction::QuarticOut,
+                    bevy_easings::EasingType::Once {
+                        duration: (std::time::Duration::from_secs(
+                            configuration.animation_duration,
+                        )),
+                    },
+                ));
+            }
+
+            if let Ok((entity, transform)) = identifier_query.get(Entity::from_raw(*h2 as u32)) {
+                let pos = layout.points.get(*h2);
+                println!("{:?}", pos);
+                commands.entity(entity).insert(transform.ease_to(
+                    Transform::from_xyz(pos[0], pos[1], pos[2]),
+                    EaseFunction::QuarticOut,
+                    bevy_easings::EasingType::Once {
+                        duration: (std::time::Duration::from_secs(
+                            configuration.animation_duration,
+                        )),
+                    },
+                ));
             }
         }
     }

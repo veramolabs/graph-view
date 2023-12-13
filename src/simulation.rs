@@ -1,7 +1,7 @@
 use crate::assets::MyAssets;
 use crate::events::{
-    AddConnectionsEvent, AddIdentifiersEvent, Forceatlas2Event, MoveIdentifiersRndEvent,
-    SelectRandomConnectedIdentifierEvent, SelectRandomIdentifierEvent,
+    AddConnectionsEvent, AddIdentifiersEvent, DeselectIdentifierEvent, Forceatlas2Event,
+    MoveIdentifiersRndEvent, SelectRandomConnectedIdentifierEvent, SelectRandomIdentifierEvent,
 };
 use crate::identifiers::{Connection, Identifier};
 use crate::resources::Configuration;
@@ -14,6 +14,7 @@ use bevy_panorbit_camera::PanOrbitCamera;
 use bevy_window::PrimaryWindow;
 use forceatlas2::*;
 use rand::Rng;
+use std::collections::HashSet;
 use std::f64::consts::PI;
 pub struct SimulationPlugin;
 
@@ -58,6 +59,7 @@ fn inspector_ui(
     mut ev_rnd_c_id: EventWriter<SelectRandomConnectedIdentifierEvent>,
     mut ev_move: EventWriter<MoveIdentifiersRndEvent>,
     mut ev_forceatlas2: EventWriter<Forceatlas2Event>,
+    mut ev_deselect: EventWriter<DeselectIdentifierEvent>,
 ) {
     let mut egui_context = query.single().clone();
 
@@ -85,6 +87,9 @@ fn inspector_ui(
             }
             if ui.button("Select random connected identifier").clicked() {
                 ev_rnd_c_id.send(SelectRandomConnectedIdentifierEvent);
+            }
+            if ui.button("Deselect identifier").clicked() {
+                ev_deselect.send(DeselectIdentifierEvent);
             }
             if ui.button("Move identifiers randomly").clicked() {
                 ev_move.send(MoveIdentifiersRndEvent);
@@ -236,6 +241,10 @@ fn add_connections(
                 .nth(rng.gen_range(0..identifier_count as usize))
                 .unwrap();
 
+            if rnd1 == rnd2 {
+                continue;
+            }
+
             let mid_point = transform1.translation.lerp(transform2.translation, 0.5);
             let distance = transform1.translation.distance(transform2.translation);
             let rotation = Quat::from_rotation_arc(
@@ -332,23 +341,10 @@ fn move_identifiers_forceatlas2(
     conn_query: Query<&Connection, With<Connection>>,
 ) {
     for settings in ev.read() {
-        // for (entity, transform) in conn_query.iter() {
-        //     let (x, y, z) = random_point_in_sphere(2.0);
-        //     commands.entity(entity).insert(transform.ease_to(
-        //         Transform::from_xyz(x, y, z),
-        //         EaseFunction::QuarticOut,
-        //         bevy_easings::EasingType::Once {
-        //             duration: (std::time::Duration::from_secs(configuration.animation_duration)),
-        //         },
-        //     ));
-        // }
-        let mut rng = rand::thread_rng();
-        const EDGES: usize = 80_000;
-        const NODES: usize = 10_000;
-        const ITERATIONS: u32 = 10;
+        const ITERATIONS: u32 = 100;
 
         eprintln!("Generating graph...");
-        let edges = conn_query
+        let edges: Vec<(usize, usize)> = conn_query
             .iter()
             .map(|connection| {
                 (
@@ -358,12 +354,19 @@ fn move_identifiers_forceatlas2(
             })
             .collect();
 
-        println!("{:?}", edges);
+        // count the number of unique nodes
+        let flattened: Vec<usize> = edges
+            .clone()
+            .into_iter()
+            .flat_map(|(a, b)| vec![a, b])
+            .collect();
+        let unique_values: HashSet<_> = flattened.into_iter().collect();
 
-        let identier_count = identifier_query.iter().count() as usize;
+        // get largest value
+        let max = unique_values.iter().max().unwrap();
         let mut layout = Layout::<f32>::from_graph(
             edges,
-            Nodes::Degree(identier_count),
+            Nodes::Degree(*max + 1),
             None,
             None,
             Settings {
@@ -383,16 +386,14 @@ fn move_identifiers_forceatlas2(
         );
 
         eprintln!("Computing layout...");
-        for i in 0..ITERATIONS {
-            println!("{}/{}", i, ITERATIONS);
+        for _ in 0..ITERATIONS {
+            // println!("{}/{}", i, ITERATIONS);
             layout.iteration();
         }
 
         for (h1, h2) in layout.edges.iter() {
-            println!("{:?} {:?}", h1, h2);
             if let Ok((entity, transform)) = identifier_query.get(Entity::from_raw(*h1 as u32)) {
                 let pos = layout.points.get(*h1);
-                println!("{:?}", pos);
                 commands.entity(entity).insert(transform.ease_to(
                     Transform::from_xyz(pos[0], pos[1], pos[2]),
                     EaseFunction::QuarticOut,
@@ -406,7 +407,6 @@ fn move_identifiers_forceatlas2(
 
             if let Ok((entity, transform)) = identifier_query.get(Entity::from_raw(*h2 as u32)) {
                 let pos = layout.points.get(*h2);
-                println!("{:?}", pos);
                 commands.entity(entity).insert(transform.ease_to(
                     Transform::from_xyz(pos[0], pos[1], pos[2]),
                     EaseFunction::QuarticOut,

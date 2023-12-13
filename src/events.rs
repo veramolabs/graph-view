@@ -5,6 +5,9 @@ use forceatlas2::Settings;
 pub struct SelectRandomIdentifierEvent;
 
 #[derive(Event, Debug)]
+pub struct DeselectIdentifierEvent;
+
+#[derive(Event, Debug)]
 pub struct SelectRandomConnectedIdentifierEvent;
 
 #[derive(Event, Debug)]
@@ -29,6 +32,7 @@ impl Plugin for EventsPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SelectRandomIdentifierEvent>()
             .add_event::<SelectRandomConnectedIdentifierEvent>()
+            .add_event::<DeselectIdentifierEvent>()
             .add_event::<AddIdentifiersEvent>()
             .add_event::<MoveIdentifiersRndEvent>()
             .add_event::<Forceatlas2Event>()

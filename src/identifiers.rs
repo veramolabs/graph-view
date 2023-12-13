@@ -5,7 +5,9 @@ use rand::Rng;
 
 use crate::{
     assets::MyAssets,
-    events::{SelectRandomConnectedIdentifierEvent, SelectRandomIdentifierEvent},
+    events::{
+        DeselectIdentifierEvent, SelectRandomConnectedIdentifierEvent, SelectRandomIdentifierEvent,
+    },
     resources::Configuration,
 };
 
@@ -28,6 +30,7 @@ impl Plugin for IdentifiersPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SelectedIdentifier>()
             .register_type::<SelectedIdentifier>()
+            .add_systems(Update, deselect_identifier)
             .add_systems(Update, select_random_identifier)
             .add_systems(Update, select_random_connected_identifier)
             .add_systems(Update, update_identifiers_and_connections)
@@ -88,6 +91,16 @@ fn select_random_identifier(
             selected_identifier.0 = Some(entity);
             info!("Selecting identifier {:?}", entity);
         }
+    }
+}
+
+fn deselect_identifier(
+    mut selected_identifier: ResMut<SelectedIdentifier>,
+    mut ev: EventReader<DeselectIdentifierEvent>,
+) {
+    for _ in ev.read() {
+        selected_identifier.0 = None;
+        info!("Deselecting identifier");
     }
 }
 
@@ -214,6 +227,23 @@ fn update_identifiers_and_connections(
                     .entity(connection_entity)
                     .insert(Visibility::Hidden);
             }
+        }
+    } else {
+        // show all identifiers
+        for (identifier, &identifier_transform) in identifier_query.iter() {
+            commands.entity(identifier).insert(MaterialMeshBundle {
+                mesh: my_assets.identifier_mesh_handle.clone(),
+                material: my_assets.identifier_material_handle.clone(),
+                transform: identifier_transform.with_scale(Vec3::new(1.0, 1.0, 1.0)),
+                ..Default::default()
+            });
+        }
+
+        // show all connections
+        for (connection_entity, _) in connection_query.iter() {
+            commands
+                .entity(connection_entity)
+                .insert(Visibility::Visible);
         }
     }
 }

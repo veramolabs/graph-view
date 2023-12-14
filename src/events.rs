@@ -24,7 +24,10 @@ pub struct AddConnectionsEvent {
 }
 
 #[derive(Event)]
-pub struct Forceatlas2Event(pub Settings<f64>);
+pub struct Forceatlas2Event {
+    pub settings: Settings<f32>,
+    pub iterations: u32,
+}
 
 pub struct EventsPlugin;
 

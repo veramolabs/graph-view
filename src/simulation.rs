@@ -25,6 +25,7 @@ impl Plugin for SimulationPlugin {
             (
                 inspector_ui.run_if(input_toggle_active(true, KeyCode::C)),
                 simulation_ui,
+                force_atlas_ui,
             ),
         )
         .register_type::<Connection>()
@@ -58,7 +59,6 @@ fn inspector_ui(
     mut ev_rnd_id: EventWriter<SelectRandomIdentifierEvent>,
     mut ev_rnd_c_id: EventWriter<SelectRandomConnectedIdentifierEvent>,
     mut ev_move: EventWriter<MoveIdentifiersRndEvent>,
-    mut ev_forceatlas2: EventWriter<Forceatlas2Event>,
     mut ev_deselect: EventWriter<DeselectIdentifierEvent>,
 ) {
     let mut egui_context = query.single().clone();
@@ -94,11 +94,7 @@ fn inspector_ui(
             if ui.button("Move identifiers randomly").clicked() {
                 ev_move.send(MoveIdentifiersRndEvent);
             }
-            if ui.button("Move identifiers forceatlas2").clicked() {
-                ev_forceatlas2.send(Forceatlas2Event(Settings {
-                    ..Default::default()
-                }));
-            }
+
             ui.separator();
             if ui.button("Move camera randomly").clicked() {
                 if let Ok((entity, transform)) = camera_q.get_single_mut() {
@@ -147,14 +143,22 @@ fn inspector_ui(
         });
 }
 
-#[derive(Default)]
 struct IdentiferCount {
     count: u32,
 }
+impl Default for IdentiferCount {
+    fn default() -> Self {
+        Self { count: 100 }
+    }
+}
 
-#[derive(Default)]
 struct ConnectionsCount {
     count: u32,
+}
+impl Default for ConnectionsCount {
+    fn default() -> Self {
+        Self { count: 100 }
+    }
 }
 
 fn simulation_ui(
@@ -183,6 +187,68 @@ fn simulation_ui(
             if ui.button("Add").clicked() {
                 ev_conn.send(AddConnectionsEvent {
                     count: conn_count.count,
+                });
+            }
+        });
+}
+
+struct Gravity(f32);
+impl Default for Gravity {
+    fn default() -> Self {
+        Self(0.3)
+    }
+}
+
+struct Atrraction(f32);
+impl Default for Atrraction {
+    fn default() -> Self {
+        Self(0.9)
+    }
+}
+
+struct Repulsion(f32);
+impl Default for Repulsion {
+    fn default() -> Self {
+        Self(0.05)
+    }
+}
+
+struct Iterations(u32);
+impl Default for Iterations {
+    fn default() -> Self {
+        Self(100)
+    }
+}
+
+fn force_atlas_ui(
+    query: Query<&mut EguiContext, With<PrimaryWindow>>,
+    mut gravity: Local<Gravity>,
+    mut attraction: Local<Atrraction>,
+    mut repulsion: Local<Repulsion>,
+    mut iterations: Local<Iterations>,
+    mut ev: EventWriter<Forceatlas2Event>,
+) {
+    let mut egui_context = query.single().clone();
+
+    egui::Window::new("ForceAtlas2")
+        .vscroll(false)
+        .hscroll(false)
+        .default_width(250.0)
+        .resizable(false)
+        .show(egui_context.get_mut(), |ui| {
+            ui.add(egui::Slider::new(&mut gravity.0, 0.0..=2.0).text("Gravity"));
+            ui.add(egui::Slider::new(&mut attraction.0, 0.0..=2.0).text("Attraction"));
+            ui.add(egui::Slider::new(&mut repulsion.0, 0.0..=2.0).text("Repulsion"));
+            ui.add(egui::Slider::new(&mut iterations.0, 1..=1000).text("Iterations"));
+            if ui.button("Move identifiers forceatlas2").clicked() {
+                ev.send(Forceatlas2Event {
+                    settings: Settings {
+                        kg: gravity.0,
+                        ka: attraction.0,
+                        kr: repulsion.0,
+                        ..Default::default()
+                    },
+                    iterations: iterations.0,
                 });
             }
         });
@@ -341,8 +407,6 @@ fn move_identifiers_forceatlas2(
     conn_query: Query<&Connection, With<Connection>>,
 ) {
     for settings in ev.read() {
-        const ITERATIONS: u32 = 100;
-
         eprintln!("Generating graph...");
         let edges: Vec<(usize, usize)> = conn_query
             .iter()
@@ -374,19 +438,19 @@ fn move_identifiers_forceatlas2(
                 barnes_hut: None,
                 chunk_size: Some(256),
                 dimensions: 3,
-                dissuade_hubs: false,
-                ka: 0.5,
-                kg: 1.0,
-                kr: 0.1,
+                dissuade_hubs: true,
+                ka: settings.settings.ka,
+                kg: settings.settings.kg,
+                kr: settings.settings.kr,
                 lin_log: false,
                 prevent_overlapping: None,
                 speed: 1.0,
-                strong_gravity: false,
+                strong_gravity: true,
             },
         );
 
         eprintln!("Computing layout...");
-        for _ in 0..ITERATIONS {
+        for _ in 0..settings.iterations {
             // println!("{}/{}", i, ITERATIONS);
             layout.iteration();
         }

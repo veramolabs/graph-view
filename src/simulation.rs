@@ -5,6 +5,7 @@ use crate::events::{
 };
 use crate::identifiers::{Connection, Identifier};
 use crate::resources::Configuration;
+use crate::util::calculate_from_translation_and_focus;
 use bevy::input::common_conditions::input_toggle_active;
 use bevy::prelude::*;
 use bevy_easings::*;
@@ -52,10 +53,9 @@ fn random_point_in_sphere(radius: f32) -> (f32, f32, f32) {
 }
 
 fn inspector_ui(
-    mut commands: Commands,
     mut configuration: ResMut<Configuration>,
     query: Query<&mut EguiContext, With<PrimaryWindow>>,
-    mut camera_q: Query<(Entity, &Transform), With<PanOrbitCamera>>,
+    mut camera_q: Query<&mut PanOrbitCamera, With<PanOrbitCamera>>,
     mut ev_rnd_id: EventWriter<SelectRandomIdentifierEvent>,
     mut ev_rnd_c_id: EventWriter<SelectRandomConnectedIdentifierEvent>,
     mut ev_move: EventWriter<MoveIdentifiersRndEvent>,
@@ -97,47 +97,26 @@ fn inspector_ui(
 
             ui.separator();
             if ui.button("Move camera randomly").clicked() {
-                if let Ok((entity, transform)) = camera_q.get_single_mut() {
-                    commands.entity(entity).insert(
-                        transform.ease_to(
-                            Transform::from_xyz(
-                                rand::thread_rng().gen_range(
-                                    -configuration.container_size..=configuration.container_size,
-                                ),
-                                rand::thread_rng().gen_range(
-                                    -configuration.container_size..=configuration.container_size,
-                                ),
-                                rand::thread_rng().gen_range(
-                                    -configuration.container_size..=configuration.container_size,
-                                ),
-                            )
-                            .looking_at(Vec3::ZERO, Vec3::Y),
-                            EaseFunction::QuarticInOut,
-                            bevy_easings::EasingType::Once {
-                                duration: (std::time::Duration::from_secs(
-                                    configuration.animation_duration,
-                                )),
-                            },
-                        ),
-                    );
+                if let Ok(mut camera) = camera_q.get_single_mut() {
+                    let (x, y, z) = random_point_in_sphere(configuration.container_size);
+                    let (alpha, beta, radius) =
+                        calculate_from_translation_and_focus(Vec3::new(x, y, z), Vec3::ZERO);
+                    camera.target_alpha = alpha;
+                    camera.target_beta = beta;
+                    camera.target_radius = radius;
+                    camera.target_focus = Vec3::ZERO;
                 };
             }
 
             if ui.button("Zoom out").clicked() {
-                if let Ok((entity, transform)) = camera_q.get_single_mut() {
-                    let new_position = transform.translation + configuration.container_size * 1.5;
-                    commands.entity(entity).insert(
-                        transform.ease_to(
-                            Transform::from_xyz(new_position.x, new_position.y, new_position.z)
-                                .looking_at(Vec3::ZERO, Vec3::Y),
-                            EaseFunction::QuarticInOut,
-                            bevy_easings::EasingType::Once {
-                                duration: (std::time::Duration::from_secs(
-                                    configuration.animation_duration,
-                                )),
-                            },
-                        ),
-                    );
+                if let Ok(mut camera) = camera_q.get_single_mut() {
+                    let new_position = Vec3::ZERO + configuration.container_size * 1.5;
+                    let (alpha, beta, radius) =
+                        calculate_from_translation_and_focus(new_position, Vec3::ZERO);
+                    camera.target_alpha = alpha;
+                    camera.target_beta = beta;
+                    camera.target_radius = radius;
+                    camera.target_focus = Vec3::ZERO;
                 };
             }
         });

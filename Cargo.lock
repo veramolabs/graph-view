@@ -825,7 +825,6 @@ checksum = "c2bfb88d07954e06001f4d38a1acdbdaed802320801d545bf4575db8ee5f0a06"
 dependencies = [
  "bevy",
  "bevy_easings",
- "bevy_egui",
 ]
 
 [[package]]

@@ -6,13 +6,13 @@ use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_panorbit_camera::*;
-use bevy_window::PresentMode;
 mod assets;
 mod events;
 mod identifiers;
 mod keyboard;
 mod resources;
 mod simulation;
+mod util;
 
 use assets::AssetsPlugin;
 use events::EventsPlugin;
@@ -27,7 +27,7 @@ fn main() {
         .register_type::<Configuration>()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
+                // present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
                 fit_canvas_to_parent: true,
                 ..default()
             }),
@@ -39,7 +39,7 @@ fn main() {
         .add_plugins(IdentifiersPlugin)
         .add_plugins(EguiPlugin)
         .add_plugins(DefaultInspectorConfigPlugin)
-        // .add_plugins(PanOrbitCameraPlugin)
+        .add_plugins(PanOrbitCameraPlugin)
         .add_plugins(KeyboardPlugin)
         .add_plugins(WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::W)))
         .add_plugins(SimulationPlugin)
@@ -62,12 +62,6 @@ fn setup(
         },
         ClusterConfig::Single,
         PanOrbitCamera::default(),
-        // PointLight {
-        //     intensity: 5600.0, // lumens - roughly a 100W non-halogen incandescent bulb
-        //     color: Color::WHITE,
-        //     shadows_enabled: false,
-        //     ..default()
-        // },
     ));
 
     // cube

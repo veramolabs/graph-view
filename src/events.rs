@@ -1,7 +1,11 @@
 use bevy::prelude::*;
+use forceatlas2::Settings;
 
 #[derive(Event, Debug)]
 pub struct SelectRandomIdentifierEvent;
+
+#[derive(Event, Debug)]
+pub struct DeselectIdentifierEvent;
 
 #[derive(Event, Debug)]
 pub struct SelectRandomConnectedIdentifierEvent;
@@ -19,14 +23,22 @@ pub struct AddConnectionsEvent {
     pub count: u32,
 }
 
+#[derive(Event)]
+pub struct Forceatlas2Event {
+    pub settings: Settings<f32>,
+    pub iterations: u32,
+}
+
 pub struct EventsPlugin;
 
 impl Plugin for EventsPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SelectRandomIdentifierEvent>()
             .add_event::<SelectRandomConnectedIdentifierEvent>()
+            .add_event::<DeselectIdentifierEvent>()
             .add_event::<AddIdentifiersEvent>()
             .add_event::<MoveIdentifiersRndEvent>()
+            .add_event::<Forceatlas2Event>()
             .add_event::<AddConnectionsEvent>();
     }
 }

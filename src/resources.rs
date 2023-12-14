@@ -11,8 +11,8 @@ pub struct Configuration {
 impl Default for Configuration {
     fn default() -> Self {
         Self {
-            container_size: 30.0,
-            animation_duration: 6,
+            container_size: 4.0,
+            animation_duration: 2,
         }
     }
 }

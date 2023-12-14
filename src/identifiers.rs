@@ -1,12 +1,13 @@
 use bevy::prelude::*;
-use bevy_easings::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use rand::Rng;
 
 use crate::{
     assets::MyAssets,
-    events::{SelectRandomConnectedIdentifierEvent, SelectRandomIdentifierEvent},
-    resources::Configuration,
+    events::{
+        DeselectIdentifierEvent, SelectRandomConnectedIdentifierEvent, SelectRandomIdentifierEvent,
+    },
+    util::calculate_from_translation_and_focus,
 };
 
 #[derive(Component)]
@@ -28,6 +29,7 @@ impl Plugin for IdentifiersPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SelectedIdentifier>()
             .register_type::<SelectedIdentifier>()
+            .add_systems(Update, deselect_identifier)
             .add_systems(Update, select_random_identifier)
             .add_systems(Update, select_random_connected_identifier)
             .add_systems(Update, update_identifiers_and_connections)
@@ -91,12 +93,20 @@ fn select_random_identifier(
     }
 }
 
+fn deselect_identifier(
+    mut selected_identifier: ResMut<SelectedIdentifier>,
+    mut ev: EventReader<DeselectIdentifierEvent>,
+) {
+    for _ in ev.read() {
+        selected_identifier.0 = None;
+        info!("Deselecting identifier");
+    }
+}
+
 fn zoom_camera_to_selected_identifier(
-    mut commands: Commands,
-    configuration: Res<Configuration>,
     selected_identifier: Res<SelectedIdentifier>,
     identifier_query: Query<&Transform, With<Identifier>>,
-    mut camera_query: Query<(Entity, &Transform), With<PanOrbitCamera>>,
+    mut camera_q: Query<&mut PanOrbitCamera, With<PanOrbitCamera>>,
 ) {
     if !selected_identifier.is_changed() {
         return;
@@ -104,7 +114,7 @@ fn zoom_camera_to_selected_identifier(
 
     if let Some(id) = selected_identifier.0 {
         if let Ok(&identifier_transform) = identifier_query.get(id) {
-            if let Ok((camera_entity, &camera_transform)) = camera_query.get_single_mut() {
+            if let Ok(mut camera) = camera_q.get_single_mut() {
                 let direction = identifier_transform.translation - Vec3::ZERO;
                 let normalized_direction = direction.normalize();
                 let desired_distance = 3.0;
@@ -112,37 +122,14 @@ fn zoom_camera_to_selected_identifier(
                 let camera_position =
                     identifier_transform.translation + normalized_direction * desired_distance;
 
-                let mid_point = camera_transform
-                    .translation
-                    .lerp(identifier_transform.translation, 0.9);
-
-                commands.entity(camera_entity).insert(
-                    camera_transform
-                        .ease_to(
-                            Transform::from_translation(mid_point)
-                                .looking_at(identifier_transform.translation, Vec3::Y),
-                            EaseFunction::QuinticInOut,
-                            bevy_easings::EasingType::Once {
-                                duration: (std::time::Duration::from_secs(
-                                    configuration.animation_duration / 2,
-                                )),
-                            },
-                        )
-                        .ease_to(
-                            Transform::from_xyz(
-                                camera_position.x,
-                                camera_position.y,
-                                camera_position.z,
-                            )
-                            .looking_at(identifier_transform.translation, Vec3::Y),
-                            EaseFunction::QuarticInOut,
-                            bevy_easings::EasingType::Once {
-                                duration: (std::time::Duration::from_secs(
-                                    configuration.animation_duration / 2,
-                                )),
-                            },
-                        ),
+                let (alpha, beta, radius) = calculate_from_translation_and_focus(
+                    camera_position,
+                    identifier_transform.translation,
                 );
+                camera.target_alpha = alpha;
+                camera.target_beta = beta;
+                camera.target_radius = radius;
+                camera.target_focus = identifier_transform.translation;
             };
         };
     }
@@ -214,6 +201,23 @@ fn update_identifiers_and_connections(
                     .entity(connection_entity)
                     .insert(Visibility::Hidden);
             }
+        }
+    } else {
+        // show all identifiers
+        for (identifier, &identifier_transform) in identifier_query.iter() {
+            commands.entity(identifier).insert(MaterialMeshBundle {
+                mesh: my_assets.identifier_mesh_handle.clone(),
+                material: my_assets.identifier_material_handle.clone(),
+                transform: identifier_transform.with_scale(Vec3::new(1.0, 1.0, 1.0)),
+                ..Default::default()
+            });
+        }
+
+        // show all connections
+        for (connection_entity, _) in connection_query.iter() {
+            commands
+                .entity(connection_entity)
+                .insert(Visibility::Visible);
         }
     }
 }

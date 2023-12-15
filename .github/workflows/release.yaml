@@ -24,7 +24,7 @@ jobs:
       - uses: olegtarasov/get-tag@v2.1.2
         id: get_version
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@nightly
         with:
           targets: wasm32-unknown-unknown
       - name: install wasm-bindgen-cli
@@ -70,7 +70,7 @@ jobs:
   #     - uses: olegtarasov/get-tag@v2.1.2
   #       id: get_version
   #     - uses: actions/checkout@v4
-  #     - uses: dtolnay/rust-toolchain@stable
+  #     - uses: dtolnay/rust-toolchain@nightly
   #       with:
   #         targets: x86_64-unknown-linux-gnu
   #     - name: install dependencies
@@ -117,7 +117,7 @@ jobs:
   #     - uses: olegtarasov/get-tag@v2.1.2
   #       id: get_version
   #     - uses: actions/checkout@v4
-  #     - uses: dtolnay/rust-toolchain@stable
+  #     - uses: dtolnay/rust-toolchain@nightly
   #       with:
   #         targets: x86_64-pc-windows-msvc
 
@@ -160,7 +160,7 @@ jobs:
   #     - uses: olegtarasov/get-tag@v2.1.2
   #       id: get_version
   #     - uses: actions/checkout@v4
-  #     - uses: dtolnay/rust-toolchain@stable
+  #     - uses: dtolnay/rust-toolchain@nightly
   #       with:
   #         targets: x86_64-apple-darwin
   #     - name: Environment Setup
@@ -204,7 +204,7 @@ jobs:
   #     - uses: olegtarasov/get-tag@v2.1.2
   #       id: get_version
   #     - uses: actions/checkout@v4
-  #     - uses: dtolnay/rust-toolchain@stable
+  #     - uses: dtolnay/rust-toolchain@nightly
   #       with:
   #         targets: aarch64-apple-darwin
   #     - name: Environment 

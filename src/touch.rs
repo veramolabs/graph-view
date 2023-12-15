@@ -36,8 +36,8 @@ pub struct TouchCameraConfig {
 impl Default for TouchCameraConfig {
     fn default() -> Self {
         Self {
-            drag_sensitivity: 1.,
-            zoom_sensitivity: 0.005,
+            drag_sensitivity: 0.002,
+            zoom_sensitivity: 0.1,
             touch_time_min: 0.01,
             opposites_tolerance: 0.,
         }
@@ -143,8 +143,14 @@ fn touch_pan_zoom(
             return;
         }
 
-        camera.target_alpha += touches[0].distance().y.to_radians();
-        camera.target_beta += touches[0].distance().x.to_radians();
+        let Some(radius) = camera.radius else {
+            return;
+        };
+
+        camera.target_alpha +=
+            (-touches[0].distance().x * config.drag_sensitivity * radius).to_radians();
+        camera.target_beta +=
+            (touches[0].distance().y * config.drag_sensitivity * radius).to_radians();
 
         // let distance = Vec3::new(touches[0].distance().x, -touches[0].distance().y, 0.);
         // let Some(radius) = camera.radius else {

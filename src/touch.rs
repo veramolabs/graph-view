@@ -37,7 +37,7 @@ impl Default for TouchCameraConfig {
     fn default() -> Self {
         Self {
             drag_sensitivity: 0.002,
-            zoom_sensitivity: 0.1,
+            zoom_sensitivity: 0.01,
             touch_time_min: 0.01,
             opposites_tolerance: 0.,
         }

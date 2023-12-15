@@ -117,7 +117,7 @@ fn zoom_camera_to_selected_identifier(
             if let Ok(mut camera) = camera_q.get_single_mut() {
                 let direction = identifier_transform.translation - Vec3::ZERO;
                 let normalized_direction = direction.normalize();
-                let desired_distance = 3.0;
+                let desired_distance = 4.0;
 
                 let camera_position =
                     identifier_transform.translation + normalized_direction * desired_distance;

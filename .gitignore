@@ -1,1 +1,3 @@
 /target
+/wasm/assets
+/wasm/bevy_game*

@@ -5,6 +5,7 @@ use bevy_easings::EasingsPlugin;
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
+use bevy_mod_picking::DefaultPickingPlugins;
 use bevy_panorbit_camera::*;
 mod assets;
 mod events;
@@ -43,6 +44,7 @@ fn main() {
         .add_plugins(DefaultInspectorConfigPlugin)
         .add_plugins(PanOrbitCameraPlugin)
         .add_plugins(TouchCameraPlugin::default())
+        .add_plugins(DefaultPickingPlugins)
         .add_plugins(KeyboardPlugin)
         .add_plugins(WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::W)))
         .add_plugins(SimulationPlugin)

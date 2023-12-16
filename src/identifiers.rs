@@ -5,7 +5,8 @@ use rand::Rng;
 use crate::{
     assets::MyAssets,
     events::{
-        DeselectIdentifierEvent, SelectRandomConnectedIdentifierEvent, SelectRandomIdentifierEvent,
+        DeselectIdentifierEvent, SelectIdentifierEvent, SelectRandomConnectedIdentifierEvent,
+        SelectRandomIdentifierEvent,
     },
     util::calculate_from_translation_and_focus,
 };
@@ -29,6 +30,7 @@ impl Plugin for IdentifiersPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SelectedIdentifier>()
             .register_type::<SelectedIdentifier>()
+            .add_systems(Update, select_identifier)
             .add_systems(Update, deselect_identifier)
             .add_systems(Update, select_random_identifier)
             .add_systems(Update, select_random_connected_identifier)
@@ -93,6 +95,16 @@ fn select_random_identifier(
     }
 }
 
+fn select_identifier(
+    mut selected_identifier: ResMut<SelectedIdentifier>,
+    mut ev: EventReader<SelectIdentifierEvent>,
+) {
+    for event in ev.read() {
+        selected_identifier.0 = Some(event.0);
+        info!("Selecting identifier {:?}", event.0);
+    }
+}
+
 fn deselect_identifier(
     mut selected_identifier: ResMut<SelectedIdentifier>,
     mut ev: EventReader<DeselectIdentifierEvent>,
@@ -148,14 +160,14 @@ fn update_identifiers_and_connections(
     };
 
     if let Some(id) = selected_identifier.0 {
-        if let Ok((identifier, &identifier_transform)) = identifier_query.get(id) {
-            commands.entity(identifier).insert(MaterialMeshBundle {
-                mesh: my_assets.identifier_mesh_handle.clone(),
-                material: my_assets.identifier_selected_material_handle.clone(),
-                transform: identifier_transform.with_scale(Vec3::new(1.0, 1.0, 1.0)),
-                ..Default::default()
-            });
-        }
+        // if let Ok((identifier, &identifier_transform)) = identifier_query.get(id) {
+        //     commands.entity(identifier).insert(MaterialMeshBundle {
+        //         mesh: my_assets.identifier_mesh_handle.clone(),
+        //         material: my_assets.identifier_selected_material_handle.clone(),
+        //         transform: identifier_transform.with_scale(Vec3::new(1.0, 1.0, 1.0)),
+        //         ..Default::default()
+        //     });
+        // }
 
         // scale all other identifiers
         for (identifier, &identifier_transform) in

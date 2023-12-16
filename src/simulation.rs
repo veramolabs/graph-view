@@ -1,7 +1,8 @@
 use crate::assets::MyAssets;
 use crate::events::{
     AddConnectionsEvent, AddIdentifiersEvent, DeselectIdentifierEvent, Forceatlas2Event,
-    MoveIdentifiersRndEvent, SelectRandomConnectedIdentifierEvent, SelectRandomIdentifierEvent,
+    MoveIdentifiersRndEvent, SelectIdentifierEvent, SelectRandomConnectedIdentifierEvent,
+    SelectRandomIdentifierEvent,
 };
 use crate::identifiers::{Connection, Identifier};
 use crate::resources::Configuration;
@@ -11,6 +12,8 @@ use bevy::prelude::*;
 use bevy_easings::*;
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::egui;
+use bevy_mod_picking::prelude::*;
+use bevy_mod_picking::PickableBundle;
 use bevy_panorbit_camera::PanOrbitCamera;
 use bevy_window::PrimaryWindow;
 use forceatlas2::*;
@@ -260,6 +263,14 @@ fn add_identifiers(
                         },
                     ),
                 Identifier {},
+                PickableBundle::default(),
+                On::<Pointer<Click>>::run(
+                    |event: Listener<Pointer<Click>>,
+                     mut ev: EventWriter<SelectIdentifierEvent>| {
+                        info!("The pointer clicked entity {:?}", event.target);
+                        ev.send(SelectIdentifierEvent(event.target));
+                    },
+                ),
             ));
         }
     }

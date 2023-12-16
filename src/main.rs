@@ -17,6 +17,7 @@ mod touch;
 mod util;
 
 use assets::AssetsPlugin;
+use bevy_window::PresentMode;
 use events::EventsPlugin;
 use identifiers::IdentifiersPlugin;
 use keyboard::KeyboardPlugin;
@@ -30,7 +31,7 @@ fn main() {
         .register_type::<Configuration>()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                // present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
+                present_mode: PresentMode::AutoNoVsync, // Reduces input lag.
                 fit_canvas_to_parent: true,
                 ..default()
             }),

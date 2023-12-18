@@ -1,6 +1,6 @@
 [package]
 name = "graph-view"
-version = "0.1.22"
+version = "0.1.23"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -15,6 +15,7 @@ bevy_panorbit_camera = { version="0.9" }
 bevy_easings = "0.12.2"
 forceatlas2 = "0.5.0"
 bevy_mod_picking = { version="0.17.0", features = ["bevy_egui", "bevy_picking_egui"]}
+graph = "0.3.1"
 
 [profile.release]
 lto = true

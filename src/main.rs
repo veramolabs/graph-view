@@ -1,6 +1,7 @@
 use bevy::input::common_conditions::input_toggle_active;
 use bevy::pbr::ClusterConfig;
 use bevy::prelude::*;
+use bevy::render::camera::ScalingMode;
 use bevy_easings::EasingsPlugin;
 use bevy_inspector_egui::bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -65,6 +66,15 @@ fn setup(
 
     commands.spawn((
         Camera3dBundle {
+            projection: OrthographicProjection {
+                near: -500.0,
+                far: 500.0,
+                scale: 12.5,
+                scaling_mode: ScalingMode::FixedVertical(0.8),
+                ..default()
+            }
+            .into(),
+
             transform: Transform::from_translation(initial_camera_location)
                 .looking_at(Vec3::ZERO, Vec3::Y),
             ..default()

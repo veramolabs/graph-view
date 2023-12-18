@@ -176,7 +176,8 @@ fn update_identifiers_and_connections(
             commands.entity(identifier).insert(MaterialMeshBundle {
                 mesh: my_assets.identifier_mesh_handle.clone(),
                 material: my_assets.identifier_material_handle.clone(),
-                transform: identifier_transform.with_scale(Vec3::new(0.5, 0.5, 0.5)),
+                transform: identifier_transform,
+                //.with_scale(Vec3::new(0.5, 0.5, 0.5)),
                 ..Default::default()
             });
         }
@@ -189,7 +190,7 @@ fn update_identifiers_and_connections(
                         commands.entity(entity).insert(MaterialMeshBundle {
                             mesh: my_assets.identifier_mesh_handle.clone(),
                             material: my_assets.identifier_connected_material_handle.clone(),
-                            transform: transform.with_scale(Vec3::new(1.0, 1.0, 1.0)),
+                            transform, //.with_scale(Vec3::new(1.0, 1.0, 1.0)),
                             ..Default::default()
                         });
                     }
@@ -199,7 +200,7 @@ fn update_identifiers_and_connections(
                         commands.entity(entity).insert(MaterialMeshBundle {
                             mesh: my_assets.identifier_mesh_handle.clone(),
                             material: my_assets.identifier_connected_material_handle.clone(),
-                            transform: transform.with_scale(Vec3::new(1.0, 1.0, 1.0)),
+                            transform, //.with_scale(Vec3::new(1.0, 1.0, 1.0)),
                             ..Default::default()
                         });
                     }
@@ -220,7 +221,7 @@ fn update_identifiers_and_connections(
             commands.entity(identifier).insert(MaterialMeshBundle {
                 mesh: my_assets.identifier_mesh_handle.clone(),
                 material: my_assets.identifier_material_handle.clone(),
-                transform: identifier_transform.with_scale(Vec3::new(1.0, 1.0, 1.0)),
+                transform: identifier_transform, //.with_scale(Vec3::new(1.0, 1.0, 1.0)),
                 ..Default::default()
             });
         }

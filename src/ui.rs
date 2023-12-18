@@ -10,7 +10,7 @@ use crate::{
         SelectRandomIdentifierEvent,
     },
     resources::Configuration,
-    simulation::{force_atlas_ui, simulation_ui},
+    simulation::{force_atlas_ui, page_rank_ui, simulation_ui},
     util::{calculate_from_translation_and_focus, random_point_in_sphere},
 };
 
@@ -21,6 +21,7 @@ pub struct UiState {
     pub show_actions: bool,
     pub show_forceatlas: bool,
     pub show_simulation: bool,
+    pub show_pagerank: bool,
 }
 
 pub struct UiPlugin;
@@ -37,6 +38,7 @@ impl Plugin for UiPlugin {
                     actions_ui.run_if(|state: Res<UiState>| state.show_actions),
                     force_atlas_ui.run_if(|state: Res<UiState>| state.show_forceatlas),
                     simulation_ui.run_if(|state: Res<UiState>| state.show_simulation),
+                    page_rank_ui.run_if(|state: Res<UiState>| state.show_pagerank),
                 ),
             );
     }
@@ -54,6 +56,9 @@ fn ui(query: Query<&mut EguiContext, With<PrimaryWindow>>, mut state: ResMut<UiS
             };
             if ui.button("Atlas").clicked() {
                 state.show_forceatlas = !state.show_forceatlas;
+            };
+            if ui.button("PageRank").clicked() {
+                state.show_pagerank = !state.show_pagerank;
             };
             if ui.button("Simulate").clicked() {
                 state.show_simulation = !state.show_simulation;

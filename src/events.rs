@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use forceatlas2::Settings;
+use graph::page_rank::PageRankConfig;
 
 #[derive(Event, Debug)]
 pub struct SelectRandomIdentifierEvent;
@@ -31,6 +32,10 @@ pub struct Forceatlas2Event {
     pub settings: Settings<f32>,
     pub iterations: u32,
 }
+#[derive(Event)]
+pub struct PageRankEvent {
+    pub config: PageRankConfig,
+}
 
 pub struct EventsPlugin;
 
@@ -43,6 +48,7 @@ impl Plugin for EventsPlugin {
             .add_event::<AddIdentifiersEvent>()
             .add_event::<MoveIdentifiersRndEvent>()
             .add_event::<Forceatlas2Event>()
+            .add_event::<PageRankEvent>()
             .add_event::<AddConnectionsEvent>();
     }
 }

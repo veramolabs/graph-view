@@ -1,8 +1,5 @@
 use crate::assets::MyAssets;
-use crate::events::{
-    AddConnectionsEvent, AddIdentifiersEvent, Forceatlas2Event, MoveIdentifiersRndEvent,
-    SelectIdentifierEvent,
-};
+use crate::events::*;
 use crate::identifiers::{Connection, Identifier};
 use crate::resources::Configuration;
 use crate::util::random_point_in_sphere;
@@ -14,9 +11,10 @@ use bevy_mod_picking::prelude::*;
 use bevy_mod_picking::PickableBundle;
 use bevy_window::PrimaryWindow;
 use forceatlas2::*;
+use graph::page_rank::PageRankConfig;
+use graph::prelude::*;
 use rand::Rng;
 use std::collections::HashSet;
-
 pub struct SimulationPlugin;
 
 impl Plugin for SimulationPlugin {
@@ -34,6 +32,7 @@ impl Plugin for SimulationPlugin {
             .add_systems(Update, add_connections)
             .add_systems(Update, move_identifiers_randomly)
             .add_systems(Update, move_identifiers_forceatlas2)
+            .add_systems(Update, resize_identifiers_pagerank)
             .add_systems(Update, update_connections_transforms)
             .add_systems(Update, add_identifiers);
     }
@@ -311,7 +310,7 @@ fn move_identifiers_forceatlas2(
     conn_query: Query<&Connection, With<Connection>>,
 ) {
     for settings in ev.read() {
-        eprintln!("Generating graph...");
+        // eprintln!("Generating graph...");
         let edges: Vec<(usize, usize)> = conn_query
             .iter()
             .map(|connection| {
@@ -353,7 +352,7 @@ fn move_identifiers_forceatlas2(
             },
         );
 
-        eprintln!("Computing layout...");
+        // eprintln!("Computing layout...");
         for _ in 0..settings.iterations {
             // println!("{}/{}", i, ITERATIONS);
             layout.iteration();
@@ -363,7 +362,7 @@ fn move_identifiers_forceatlas2(
             if let Ok((entity, transform)) = identifier_query.get(Entity::from_raw(*h1 as u32)) {
                 let pos = layout.points.get(*h1);
                 commands.entity(entity).insert(transform.ease_to(
-                    Transform::from_xyz(pos[0], pos[1], pos[2]),
+                    Transform::from_xyz(pos[0], pos[1], pos[2]).with_scale(transform.scale),
                     EaseFunction::QuarticOut,
                     bevy_easings::EasingType::Once {
                         duration: (std::time::Duration::from_secs(
@@ -376,7 +375,7 @@ fn move_identifiers_forceatlas2(
             if let Ok((entity, transform)) = identifier_query.get(Entity::from_raw(*h2 as u32)) {
                 let pos = layout.points.get(*h2);
                 commands.entity(entity).insert(transform.ease_to(
-                    Transform::from_xyz(pos[0], pos[1], pos[2]),
+                    Transform::from_xyz(pos[0], pos[1], pos[2]).with_scale(transform.scale),
                     EaseFunction::QuarticOut,
                     bevy_easings::EasingType::Once {
                         duration: (std::time::Duration::from_secs(
@@ -387,4 +386,180 @@ fn move_identifiers_forceatlas2(
             }
         }
     }
+}
+
+fn resize_identifiers_pagerank(
+    mut commands: Commands,
+    mut ev: EventReader<PageRankEvent>,
+    configuration: Res<Configuration>,
+    identifier_query: Query<(Entity, &Transform), With<Identifier>>,
+    conn_query: Query<&Connection, With<Connection>>,
+) {
+    for settings in ev.read() {
+        // eprintln!("Generating graph...");
+
+        let edges: Vec<(usize, usize)> = conn_query
+            .iter()
+            .map(|connection| {
+                (
+                    connection.from.index() as usize,
+                    connection.to.index() as usize,
+                )
+            })
+            .collect();
+
+        // // count the number of unique nodes
+        // let flattened: Vec<usize> = edges
+        //     .clone()
+        //     .into_iter()
+        //     .flat_map(|(a, b)| vec![a, b])
+        //     .collect();
+
+        // let unique_values: HashSet<_> = flattened.into_iter().collect();
+        // unique_values.iter().enumerate().for_each(|(i, v)| {
+        //     println!("{}: {}", i, v);
+        // });
+
+        let (unique_values, indexed_vec) = process_vec(&edges);
+
+        // println!("Unique Values: {:?}", unique_values);
+        // println!("Indexed Vec: {:?}", indexed_vec);
+
+        let graph: DirectedCsrGraph<usize> = GraphBuilder::new().edges(indexed_vec).build();
+
+        let (ranks, _, _) = page_rank(&graph, settings.config);
+        // println!("Ranks: {:?}", ranks);
+        let mut cloned_ranks = ranks.clone();
+        normalize(&mut cloned_ranks);
+
+        // println!("Normalized Ranks: {:?}", cloned_ranks);
+        for (i, rank) in cloned_ranks.iter().enumerate() {
+            if let Ok((entity, transform)) =
+                identifier_query.get(Entity::from_raw(unique_values[i] as u32))
+            {
+                let pos = transform.translation;
+                commands.entity(entity).insert(
+                    transform.ease_to(
+                        Transform::from_xyz(pos.x, pos.y, pos.z)
+                            .with_scale(Vec3::ONE * (*rank * 3.0 + 0.5)),
+                        EaseFunction::QuarticOut,
+                        bevy_easings::EasingType::Once {
+                            duration: (std::time::Duration::from_secs(
+                                configuration.animation_duration,
+                            )),
+                        },
+                    ),
+                );
+            }
+        }
+
+        // for (h1, h2) in layout.edges.iter() {
+        //     if let Ok((entity, transform)) = identifier_query.get(Entity::from_raw(*h1 as u32)) {
+        //         let pos = layout.points.get(*h1);
+        //         commands.entity(entity).insert(transform.ease_to(
+        //             Transform::from_xyz(pos[0], pos[1], pos[2]),
+        //             EaseFunction::QuarticOut,
+        //             bevy_easings::EasingType::Once {
+        //                 duration: (std::time::Duration::from_secs(
+        //                     configuration.animation_duration,
+        //                 )),
+        //             },
+        //         ));
+        //     }
+
+        //     if let Ok((entity, transform)) = identifier_query.get(Entity::from_raw(*h2 as u32)) {
+        //         let pos = layout.points.get(*h2);
+        //         commands.entity(entity).insert(transform.ease_to(
+        //             Transform::from_xyz(pos[0], pos[1], pos[2]),
+        //             EaseFunction::QuarticOut,
+        //             bevy_easings::EasingType::Once {
+        //                 duration: (std::time::Duration::from_secs(
+        //                     configuration.animation_duration,
+        //                 )),
+        //             },
+        //         ));
+        //     }
+        // }
+    }
+}
+
+fn normalize(vec: &mut [f32]) {
+    let min = vec.iter().cloned().fold(f32::INFINITY, f32::min);
+    let max = vec.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+
+    if max - min != 0.0 {
+        vec.iter_mut().for_each(|x| *x = (*x - min) / (max - min));
+    }
+}
+
+fn process_vec(input: &[(usize, usize)]) -> (Vec<usize>, Vec<(usize, usize)>) {
+    // Step 1: Extract and sort unique values
+    let mut unique_values: Vec<usize> = input.iter().flat_map(|(a, b)| vec![*a, *b]).collect();
+    unique_values.sort_unstable();
+    unique_values.dedup();
+
+    // Step 2: Create a map for value to index
+    let value_to_index: std::collections::HashMap<_, _> = unique_values
+        .iter()
+        .enumerate()
+        .map(|(index, &value)| (value, index))
+        .collect();
+
+    // Step 3: Transform the original vector
+    let indexed_vec: Vec<(usize, usize)> = input
+        .iter()
+        .map(|(a, b)| (value_to_index[&a], value_to_index[&b]))
+        .collect();
+
+    (unique_values, indexed_vec)
+}
+
+pub struct PageRankIterations(usize);
+impl Default for PageRankIterations {
+    fn default() -> Self {
+        Self(20)
+    }
+}
+pub struct PageRankTolerance(f64);
+impl Default for PageRankTolerance {
+    fn default() -> Self {
+        Self(1.0E-4f64)
+    }
+}
+
+pub struct PageRankDamping(f32);
+impl Default for PageRankDamping {
+    fn default() -> Self {
+        Self(0.8500f32)
+    }
+}
+
+pub fn page_rank_ui(
+    query: Query<&mut EguiContext, With<PrimaryWindow>>,
+    mut iterations: Local<PageRankIterations>,
+    mut tolerance: Local<PageRankTolerance>,
+    mut damping: Local<PageRankDamping>,
+    mut ev: EventWriter<PageRankEvent>,
+) {
+    let mut egui_context = query.single().clone();
+
+    egui::Window::new("Page Rank")
+        .vscroll(false)
+        .hscroll(false)
+        .default_width(250.0)
+        .resizable(false)
+        .show(egui_context.get_mut(), |ui| {
+            ui.add(egui::Slider::new(&mut iterations.0, 1..=100).text("Iterations"));
+            ui.add(egui::Slider::new(&mut damping.0, 0.0..=2.0).text("Damping"));
+            ui.add(egui::Slider::new(&mut tolerance.0, 0.0..=0.001).text("Tolerance"));
+            if ui.button("Resize").clicked() {
+                ev.send(PageRankEvent {
+                    config: PageRankConfig {
+                        max_iterations: iterations.0,
+                        tolerance: tolerance.0,
+                        damping_factor: damping.0,
+                    },
+                });
+            }
+        });
 }

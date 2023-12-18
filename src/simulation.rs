@@ -1,131 +1,45 @@
 use crate::assets::MyAssets;
 use crate::events::{
-    AddConnectionsEvent, AddIdentifiersEvent, DeselectIdentifierEvent, Forceatlas2Event,
-    MoveIdentifiersRndEvent, SelectIdentifierEvent, SelectRandomConnectedIdentifierEvent,
-    SelectRandomIdentifierEvent,
+    AddConnectionsEvent, AddIdentifiersEvent, Forceatlas2Event, MoveIdentifiersRndEvent,
+    SelectIdentifierEvent,
 };
 use crate::identifiers::{Connection, Identifier};
 use crate::resources::Configuration;
-use crate::util::calculate_from_translation_and_focus;
-use bevy::input::common_conditions::input_toggle_active;
+use crate::util::random_point_in_sphere;
 use bevy::prelude::*;
 use bevy_easings::*;
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::egui;
 use bevy_mod_picking::prelude::*;
 use bevy_mod_picking::PickableBundle;
-use bevy_panorbit_camera::PanOrbitCamera;
 use bevy_window::PrimaryWindow;
 use forceatlas2::*;
 use rand::Rng;
 use std::collections::HashSet;
-use std::f64::consts::PI;
+
 pub struct SimulationPlugin;
 
 impl Plugin for SimulationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                inspector_ui.run_if(input_toggle_active(true, KeyCode::C)),
-                simulation_ui,
-                force_atlas_ui,
-            ),
-        )
-        .register_type::<Connection>()
-        .add_systems(Update, add_connections)
-        .add_systems(Update, move_identifiers_randomly)
-        .add_systems(Update, move_identifiers_forceatlas2)
-        .add_systems(Update, update_connections_transforms)
-        .add_systems(Update, add_identifiers);
+        app
+            // .add_systems(
+            //     Update,
+            //     (
+            //         inspector_ui.run_if(input_toggle_active(true, KeyCode::C)),
+            //         simulation_ui,
+            //         force_atlas_ui,
+            //     ),
+            // )
+            .register_type::<Connection>()
+            .add_systems(Update, add_connections)
+            .add_systems(Update, move_identifiers_randomly)
+            .add_systems(Update, move_identifiers_forceatlas2)
+            .add_systems(Update, update_connections_transforms)
+            .add_systems(Update, add_identifiers);
     }
 }
 
-fn random_point_in_sphere(radius: f32) -> (f32, f32, f32) {
-    let mut rng = rand::thread_rng();
-    let theta = rng.gen::<f32>() * 2.0 * PI as f32;
-    let phi = rng.gen::<f32>() * PI as f32;
-    let u = rng.gen::<f32>() * radius.powi(3);
-
-    let r = u.cbrt();
-    let x = r * phi.sin() * theta.cos();
-    let y = r * phi.sin() * theta.sin();
-    let z = r * phi.cos();
-
-    (x, y, z)
-}
-
-fn inspector_ui(
-    mut configuration: ResMut<Configuration>,
-    query: Query<&mut EguiContext, With<PrimaryWindow>>,
-    mut camera_q: Query<&mut PanOrbitCamera, With<PanOrbitCamera>>,
-    mut ev_rnd_id: EventWriter<SelectRandomIdentifierEvent>,
-    mut ev_rnd_c_id: EventWriter<SelectRandomConnectedIdentifierEvent>,
-    mut ev_move: EventWriter<MoveIdentifiersRndEvent>,
-    mut ev_deselect: EventWriter<DeselectIdentifierEvent>,
-) {
-    let mut egui_context = query.single().clone();
-
-    egui::Window::new("Configuration")
-        .vscroll(false)
-        .hscroll(false)
-        .default_width(250.0)
-        .resizable(false)
-        .show(egui_context.get_mut(), |ui| {
-            ui.add(egui::Slider::new(&mut configuration.container_size, 0.0..=100.0).text("Space"));
-            ui.add(
-                egui::Slider::new(&mut configuration.animation_duration, 1..=10)
-                    .text("Duration (sec)"),
-            );
-        });
-
-    egui::Window::new("Actions")
-        .vscroll(false)
-        .hscroll(false)
-        .default_width(250.0)
-        .resizable(false)
-        .show(egui_context.get_mut(), |ui| {
-            if ui.button("Select random identifier").clicked() {
-                ev_rnd_id.send(SelectRandomIdentifierEvent);
-            }
-            if ui.button("Select random connected identifier").clicked() {
-                ev_rnd_c_id.send(SelectRandomConnectedIdentifierEvent);
-            }
-            if ui.button("Deselect identifier").clicked() {
-                ev_deselect.send(DeselectIdentifierEvent);
-            }
-            if ui.button("Move identifiers randomly").clicked() {
-                ev_move.send(MoveIdentifiersRndEvent);
-            }
-
-            ui.separator();
-            if ui.button("Move camera randomly").clicked() {
-                if let Ok(mut camera) = camera_q.get_single_mut() {
-                    let (x, y, z) = random_point_in_sphere(configuration.container_size);
-                    let (alpha, beta, radius) =
-                        calculate_from_translation_and_focus(Vec3::new(x, y, z), Vec3::ZERO);
-                    camera.target_alpha = alpha;
-                    camera.target_beta = beta;
-                    camera.target_radius = radius;
-                    camera.target_focus = Vec3::ZERO;
-                };
-            }
-
-            if ui.button("Zoom out").clicked() {
-                if let Ok(mut camera) = camera_q.get_single_mut() {
-                    let new_position = Vec3::ZERO + configuration.container_size * 1.5;
-                    let (alpha, beta, radius) =
-                        calculate_from_translation_and_focus(new_position, Vec3::ZERO);
-                    camera.target_alpha = alpha;
-                    camera.target_beta = beta;
-                    camera.target_radius = radius;
-                    camera.target_focus = Vec3::ZERO;
-                };
-            }
-        });
-}
-
-struct IdentiferCount {
+pub struct IdentiferCount {
     count: u32,
 }
 impl Default for IdentiferCount {
@@ -134,7 +48,7 @@ impl Default for IdentiferCount {
     }
 }
 
-struct ConnectionsCount {
+pub struct ConnectionsCount {
     count: u32,
 }
 impl Default for ConnectionsCount {
@@ -143,7 +57,7 @@ impl Default for ConnectionsCount {
     }
 }
 
-fn simulation_ui(
+pub fn simulation_ui(
     query: Query<&mut EguiContext, With<PrimaryWindow>>,
     mut id_count: Local<IdentiferCount>,
     mut conn_count: Local<ConnectionsCount>,
@@ -174,35 +88,35 @@ fn simulation_ui(
         });
 }
 
-struct Gravity(f32);
+pub struct Gravity(f32);
 impl Default for Gravity {
     fn default() -> Self {
         Self(0.3)
     }
 }
 
-struct Atrraction(f32);
+pub struct Atrraction(f32);
 impl Default for Atrraction {
     fn default() -> Self {
         Self(0.9)
     }
 }
 
-struct Repulsion(f32);
+pub struct Repulsion(f32);
 impl Default for Repulsion {
     fn default() -> Self {
         Self(0.05)
     }
 }
 
-struct Iterations(u32);
+pub struct Iterations(u32);
 impl Default for Iterations {
     fn default() -> Self {
         Self(100)
     }
 }
 
-fn force_atlas_ui(
+pub fn force_atlas_ui(
     query: Query<&mut EguiContext, With<PrimaryWindow>>,
     mut gravity: Local<Gravity>,
     mut attraction: Local<Atrraction>,

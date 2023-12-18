@@ -14,6 +14,7 @@ mod keyboard;
 mod resources;
 mod simulation;
 mod touch;
+mod ui;
 mod util;
 
 use assets::AssetsPlugin;
@@ -24,6 +25,7 @@ use keyboard::KeyboardPlugin;
 use resources::Configuration;
 use simulation::SimulationPlugin;
 use touch::TouchCameraPlugin;
+use ui::UiPlugin;
 
 fn main() {
     App::new()
@@ -37,6 +39,7 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugins(UiPlugin)
         .add_plugins(EasingsPlugin)
         .add_plugins(AssetsPlugin)
         .add_plugins(EventsPlugin)
